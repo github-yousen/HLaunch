@@ -93,3 +93,8 @@ crash-reports/
 *.jks
 *.keystore
 signing.properties
+
+# Misplaced resource folders in root
+/drawable/
+/mipmap-*/
+/version/
