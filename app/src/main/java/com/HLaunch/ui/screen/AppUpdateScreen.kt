@@ -218,7 +218,7 @@ fun AppUpdateScreen(
             apkInfo?.let { info ->
                 Card(
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        containerColor = if (info.hasUpdate) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant
                     )
                 ) {
                     Column(
@@ -229,21 +229,26 @@ fun AppUpdateScreen(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                Icons.Default.NewReleases,
+                                if (info.hasUpdate) Icons.Default.NewReleases else Icons.Default.CheckCircle,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                tint = if (info.hasUpdate) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "已获取APK",
+                                text = if (info.hasUpdate) "发现新版本" else "已是最新版本",
                                 style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                                color = if (info.hasUpdate) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         
                         Text(
-                            text = "文件名: ${info.fileName}",
+                            text = "当前版本: v$currentVersion → 远程版本: v${info.remoteVersion}",
                             style = MaterialTheme.typography.bodyMedium
+                        )
+                        
+                        Text(
+                            text = "文件名: ${info.fileName}",
+                            style = MaterialTheme.typography.bodySmall
                         )
                         
                         Text(
@@ -251,16 +256,18 @@ fun AppUpdateScreen(
                             style = MaterialTheme.typography.bodySmall
                         )
                         
-                        // 安装按钮
-                        Button(
-                            onClick = {
-                                installApk(context, info.apkFile)
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Default.InstallMobile, null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("安装")
+                        // 安装按钮（仅有更新时显示）
+                        if (info.hasUpdate) {
+                            Button(
+                                onClick = {
+                                    installApk(context, info.apkFile)
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.InstallMobile, null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("安装更新")
+                            }
                         }
                     }
                 }

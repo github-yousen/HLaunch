@@ -14,7 +14,7 @@ android {
         minSdk = 24
         targetSdk = 36
         versionCode = 1
-        versionName = "1.0"
+        versionName = "0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -30,6 +30,7 @@ android {
 
     buildTypes {
         debug {
+            isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true
             signingConfig = signingConfigs.getByName("release")
@@ -42,6 +43,8 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
+    
+    testBuildType = "release"
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -63,6 +66,29 @@ android {
             excludes += "META-INF/NOTICE"
             excludes += "META-INF/NOTICE.txt"
         }
+    }
+    
+    // 自定义APK输出文件名：HLaunch_v1.0.apk
+    applicationVariants.all {
+        val variant = this
+        variant.outputs.all {
+            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            output.outputFileName = "HLaunch_v${variant.versionName}.apk"
+        }
+    }
+}
+
+// 打包完成后复制APK到version目录
+tasks.register<Copy>("copyApkToVersion") {
+    val versionName = android.defaultConfig.versionName
+    from("build/outputs/apk/debug/HLaunch_v${versionName}.apk")
+    from("build/outputs/apk/release/HLaunch_v${versionName}.apk")
+    into("../version")
+}
+
+tasks.whenTaskAdded {
+    if (name == "assembleDebug" || name == "assembleRelease") {
+        finalizedBy("copyApkToVersion")
     }
 }
 
@@ -100,6 +126,9 @@ dependencies {
     
     // JGit for Git操作
     implementation("org.eclipse.jgit:org.eclipse.jgit:6.7.0.202309050840-r")
+    
+    // SLF4J实现（JGit依赖）
+    implementation("org.slf4j:slf4j-android:1.7.36")
     
     // JSON解析
     implementation("com.google.code.gson:gson:2.10.1")

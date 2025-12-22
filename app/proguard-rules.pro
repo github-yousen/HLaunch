@@ -15,9 +15,16 @@
 -dontwarn org.eclipse.jgit.**
 -keep class org.eclipse.jgit.** { *; }
 
+# SLF4J
+-dontwarn org.slf4j.**
+
 # Kotlin Coroutines
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
 -keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
 
 # Compose
 -dontwarn androidx.compose.**
+
+# 忽略缺失的注解类
+-dontwarn com.google.errorprone.annotations.**
+-dontwarn javax.annotation.**
