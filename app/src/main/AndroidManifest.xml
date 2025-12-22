@@ -32,6 +32,18 @@
             </intent-filter>
         </activity>
         
+        <!-- 独立WebView Activity，作为独立应用在后台运行 -->
+        <activity
+                android:name=".WebViewActivity"
+                android:exported="false"
+                android:label="HTML应用"
+                android:theme="@style/Theme.HLaunch"
+                android:launchMode="standard"
+                android:documentLaunchMode="always"
+                android:autoRemoveFromRecents="false"
+                android:configChanges="orientation|screenSize|keyboardHidden"
+                android:taskAffinity="" />
+        
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

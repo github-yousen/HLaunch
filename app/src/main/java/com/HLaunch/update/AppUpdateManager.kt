@@ -1,39 +1,22 @@
 package com.HLaunch.update
 
 import android.content.Context
-import com.HLaunch.BuildConfig
-import com.google.gson.Gson
-import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
 import java.io.File
-import java.io.FileOutputStream
-import java.net.HttpURLConnection
-import java.net.URL
 
 class AppUpdateManager(private val context: Context) {
     
     private val prefs = context.getSharedPreferences("app_update", Context.MODE_PRIVATE)
     private val updateDir = File(context.cacheDir, "update").also { it.mkdirs() }
-    private val gson = Gson()
     
-    // 版本信息数据类
-    data class VersionInfo(
-        @SerializedName("version") val version: String,
-        @SerializedName("versionCode") val versionCode: Int,
-        @SerializedName("changelog") val changelog: String = "",
-        @SerializedName("apkName") val apkName: String,
-        @SerializedName("downloadUrl") val downloadUrl: String? = null
-    )
-    
-    // 更新信息
-    data class UpdateInfo(
-        val version: String,
-        val versionCode: Int,
-        val changelog: String,
-        val downloadUrl: String
+    // APK信息
+    data class ApkInfo(
+        val apkFile: File,
+        val fileName: String,
+        val lastModified: Long
     )
     
     // 保存更新配置
@@ -47,12 +30,14 @@ class AppUpdateManager(private val context: Context) {
     fun getUpdateRepoUrl(): String? = prefs.getString("update_repo_url", null)
     fun getUpdateToken(): String? = prefs.getString("update_token", null)
     
-    // 检查更新
-    suspend fun checkForUpdate(repoUrl: String, token: String?): UpdateInfo? = withContext(Dispatchers.IO) {
+    // 检查并下载最新APK
+    suspend fun checkAndDownloadLatestApk(repoUrl: String, token: String?, onProgress: (String) -> Unit): ApkInfo? = withContext(Dispatchers.IO) {
         val repoDir = File(updateDir, "update_repo")
         
         try {
-            // 克隆或拉取仓库
+            onProgress("正在克隆仓库...")
+            
+            // 克隆仓库
             if (repoDir.exists()) {
                 repoDir.deleteRecursively()
             }
@@ -71,88 +56,46 @@ class AppUpdateManager(private val context: Context) {
             
             cloneCommand.call().close()
             
-            // 读取version.json
-            val versionFile = File(repoDir, "version.json")
-            if (!versionFile.exists()) {
-                throw Exception("未找到version.json文件")
+            onProgress("正在查找APK文件...")
+            
+            // 在version目录下查找最新的APK文件
+            val versionDir = File(repoDir, "version")
+            if (!versionDir.exists() || !versionDir.isDirectory) {
+                throw Exception("未找到version目录")
             }
             
-            val versionInfo = gson.fromJson(versionFile.readText(), VersionInfo::class.java)
-            
-            // 比较版本
-            val currentVersionCode = BuildConfig.VERSION_CODE
-            if (versionInfo.versionCode > currentVersionCode) {
-                // 确定下载URL
-                val downloadUrl = versionInfo.downloadUrl 
-                    ?: "${repoUrl.removeSuffix(".git")}/raw/main/${versionInfo.apkName}"
-                
-                return@withContext UpdateInfo(
-                    version = versionInfo.version,
-                    versionCode = versionInfo.versionCode,
-                    changelog = versionInfo.changelog,
-                    downloadUrl = downloadUrl
-                )
+            // 查找所有APK文件，按修改时间排序取最新的
+            val apkFiles = versionDir.listFiles { file -> 
+                file.isFile && file.name.endsWith(".apk", ignoreCase = true)
             }
             
-            null
+            if (apkFiles.isNullOrEmpty()) {
+                throw Exception("version目录下未找到APK文件")
+            }
+            
+            // 取修改时间最新的APK
+            val latestApk = apkFiles.maxByOrNull { it.lastModified() }!!
+            
+            onProgress("正在复制APK文件...")
+            
+            // 复制到缓存目录
+            val targetApk = File(updateDir, "update.apk")
+            if (targetApk.exists()) {
+                targetApk.delete()
+            }
+            latestApk.copyTo(targetApk)
+            
+            ApkInfo(
+                apkFile = targetApk,
+                fileName = latestApk.name,
+                lastModified = latestApk.lastModified()
+            )
         } catch (e: Exception) {
             e.printStackTrace()
             throw e
         } finally {
-            // 清理临时目录
+            // 清理临时仓库目录
             repoDir.deleteRecursively()
-        }
-    }
-    
-    // 下载APK
-    suspend fun downloadApk(
-        downloadUrl: String,
-        token: String?,
-        onProgress: (Float) -> Unit
-    ): File? = withContext(Dispatchers.IO) {
-        try {
-            val apkFile = File(updateDir, "update.apk")
-            if (apkFile.exists()) {
-                apkFile.delete()
-            }
-            
-            val url = URL(downloadUrl)
-            val connection = url.openConnection() as HttpURLConnection
-            
-            // 添加认证头
-            if (!token.isNullOrEmpty()) {
-                connection.setRequestProperty("Authorization", "token $token")
-            }
-            
-            connection.connect()
-            
-            if (connection.responseCode != HttpURLConnection.HTTP_OK) {
-                throw Exception("下载失败: ${connection.responseCode}")
-            }
-            
-            val totalSize = connection.contentLength.toLong()
-            var downloadedSize = 0L
-            
-            connection.inputStream.use { input ->
-                FileOutputStream(apkFile).use { output ->
-                    val buffer = ByteArray(8192)
-                    var bytesRead: Int
-                    
-                    while (input.read(buffer).also { bytesRead = it } != -1) {
-                        output.write(buffer, 0, bytesRead)
-                        downloadedSize += bytesRead
-                        
-                        if (totalSize > 0) {
-                            onProgress(downloadedSize.toFloat() / totalSize)
-                        }
-                    }
-                }
-            }
-            
-            apkFile
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
         }
     }
 }

@@ -1,7 +1,6 @@
 package com.HLaunch.ui.screen
 
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -23,6 +22,8 @@ import com.HLaunch.BuildConfig
 import com.HLaunch.update.AppUpdateManager
 import kotlinx.coroutines.launch
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,14 +37,14 @@ fun AppUpdateScreen(
     var repoUrl by remember { mutableStateOf(updateManager.getUpdateRepoUrl() ?: "") }
     var token by remember { mutableStateOf(updateManager.getUpdateToken() ?: "") }
     var showToken by remember { mutableStateOf(false) }
-    var isChecking by remember { mutableStateOf(false) }
-    var isDownloading by remember { mutableStateOf(false) }
-    var downloadProgress by remember { mutableStateOf(0f) }
-    var updateInfo by remember { mutableStateOf<AppUpdateManager.UpdateInfo?>(null) }
+    var isUpdating by remember { mutableStateOf(false) }
+    var progressMessage by remember { mutableStateOf("") }
+    var apkInfo by remember { mutableStateOf<AppUpdateManager.ApkInfo?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var successMessage by remember { mutableStateOf<String?>(null) }
     
     val currentVersion = remember { BuildConfig.VERSION_NAME }
+    val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()) }
     
     Scaffold(
         topBar = {
@@ -118,7 +119,7 @@ fun AppUpdateScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "应用通过Git仓库检测更新。请配置存放APK安装包的Git仓库地址，仓库根目录需包含version.json文件。",
+                        text = "从Git仓库的version目录拉取最新APK安装包进行更新。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -130,7 +131,7 @@ fun AppUpdateScreen(
                 value = repoUrl,
                 onValueChange = { repoUrl = it },
                 label = { Text("更新仓库地址") },
-                placeholder = { Text("https://github.com/user/hlaunch-releases.git") },
+                placeholder = { Text("https://github.com/user/hlaunch.git") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 leadingIcon = { Icon(Icons.Default.Link, null) },
@@ -177,40 +178,44 @@ fun AppUpdateScreen(
             Button(
                 onClick = {
                     scope.launch {
-                        isChecking = true
+                        isUpdating = true
                         errorMessage = null
-                        updateInfo = null
+                        successMessage = null
+                        apkInfo = null
                         
                         try {
-                            val info = updateManager.checkForUpdate(repoUrl.trim(), token.trim().ifEmpty { null })
-                            updateInfo = info
-                            if (info == null) {
-                                successMessage = "已是最新版本"
+                            val info = updateManager.checkAndDownloadLatestApk(
+                                repoUrl.trim(), 
+                                token.trim().ifEmpty { null }
+                            ) { progress ->
+                                progressMessage = progress
                             }
+                            apkInfo = info
                         } catch (e: Exception) {
-                            errorMessage = "检查更新失败: ${e.message}"
+                            errorMessage = "更新失败: ${e.message}"
                         } finally {
-                            isChecking = false
+                            isUpdating = false
+                            progressMessage = ""
                         }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !isChecking && !isDownloading && repoUrl.isNotBlank()
+                enabled = !isUpdating && repoUrl.isNotBlank()
             ) {
-                if (isChecking) {
+                if (isUpdating) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
                         strokeWidth = 2.dp
                     )
                 } else {
-                    Icon(Icons.Default.Search, null)
+                    Icon(Icons.Default.Download, null)
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(if (isChecking) "检查中..." else "检查更新")
+                Text(if (isUpdating) progressMessage.ifEmpty { "获取中..." } else "获取最新版本")
             }
             
-            // 更新信息
-            updateInfo?.let { info ->
+            // APK信息
+            apkInfo?.let { info ->
                 Card(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer
@@ -230,76 +235,32 @@ fun AppUpdateScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "发现新版本",
+                                text = "已获取APK",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         }
                         
                         Text(
-                            text = "版本: v${info.version}",
+                            text = "文件名: ${info.fileName}",
                             style = MaterialTheme.typography.bodyMedium
                         )
                         
-                        if (info.changelog.isNotEmpty()) {
-                            Text(
-                                text = "更新内容:",
-                                style = MaterialTheme.typography.labelMedium
-                            )
-                            Text(
-                                text = info.changelog,
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
+                        Text(
+                            text = "更新时间: ${dateFormat.format(Date(info.lastModified))}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
                         
-                        // 下载进度
-                        if (isDownloading) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            LinearProgressIndicator(
-                                progress = { downloadProgress },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Text(
-                                text = "下载中 ${(downloadProgress * 100).toInt()}%",
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        }
-                        
-                        // 下载按钮
+                        // 安装按钮
                         Button(
                             onClick = {
-                                scope.launch {
-                                    isDownloading = true
-                                    errorMessage = null
-                                    
-                                    try {
-                                        val apkFile = updateManager.downloadApk(
-                                            info.downloadUrl,
-                                            token.trim().ifEmpty { null }
-                                        ) { progress ->
-                                            downloadProgress = progress
-                                        }
-                                        
-                                        // 安装APK
-                                        if (apkFile != null) {
-                                            installApk(context, apkFile)
-                                        } else {
-                                            errorMessage = "下载失败"
-                                        }
-                                    } catch (e: Exception) {
-                                        errorMessage = "下载失败: ${e.message}"
-                                    } finally {
-                                        isDownloading = false
-                                        downloadProgress = 0f
-                                    }
-                                }
+                                installApk(context, info.apkFile)
                             },
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = !isDownloading
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(Icons.Default.Download, null)
+                            Icon(Icons.Default.InstallMobile, null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(if (isDownloading) "下载中..." else "下载并安装")
+                            Text("安装")
                         }
                     }
                 }

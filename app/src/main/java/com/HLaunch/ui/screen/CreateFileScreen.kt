@@ -29,7 +29,23 @@ fun CreateFileScreen(
     var fileName by remember { mutableStateOf("") }
     var htmlContent by remember { mutableStateOf("") }
     var showPreview by remember { mutableStateOf(false) }
+    var isFileNameManuallyEdited by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    
+    // 从HTML内容中提取title
+    fun extractTitleFromHtml(html: String): String? {
+        val regex = Regex("<title[^>]*>([^<]*)</title>", RegexOption.IGNORE_CASE)
+        return regex.find(html)?.groupValues?.get(1)?.trim()?.takeIf { it.isNotEmpty() }
+    }
+    
+    // 当HTML内容变化时，自动提取title填充文件名（仅当用户未手动编辑文件名时）
+    LaunchedEffect(htmlContent) {
+        if (!isFileNameManuallyEdited && htmlContent.isNotBlank()) {
+            extractTitleFromHtml(htmlContent)?.let { title ->
+                fileName = title
+            }
+        }
+    }
     
     // 文件选择器
     val filePickerLauncher = rememberLauncherForActivityResult(
@@ -38,12 +54,17 @@ fun CreateFileScreen(
         uri?.let {
             try {
                 context.contentResolver.openInputStream(it)?.use { stream ->
-                    htmlContent = stream.bufferedReader().readText()
-                }
-                // 从URI获取文件名
-                val name = it.lastPathSegment?.substringAfterLast("/")?.substringBeforeLast(".") ?: "imported"
-                if (fileName.isEmpty()) {
-                    fileName = name
+                    val content = stream.bufferedReader().readText()
+                    htmlContent = content
+                    // 优先从HTML title提取，否则用文件名
+                    val title = extractTitleFromHtml(content)
+                    if (title != null) {
+                        fileName = title
+                    } else {
+                        val name = it.lastPathSegment?.substringAfterLast("/")?.substringBeforeLast(".") ?: "imported"
+                        fileName = name
+                    }
+                    isFileNameManuallyEdited = false
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -87,9 +108,12 @@ fun CreateFileScreen(
             // 文件名输入
             OutlinedTextField(
                 value = fileName,
-                onValueChange = { fileName = it },
+                onValueChange = { 
+                    fileName = it
+                    isFileNameManuallyEdited = true
+                },
                 label = { Text("文件名") },
-                placeholder = { Text("输入文件名（不含扩展名）") },
+                placeholder = { Text("自动从HTML title提取") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 leadingIcon = { Icon(Icons.Default.Description, null) }
@@ -120,15 +144,24 @@ fun CreateFileScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 AssistChip(
-                    onClick = { htmlContent = HTML_TEMPLATE_BASIC },
+                    onClick = { 
+                        htmlContent = HTML_TEMPLATE_BASIC
+                        isFileNameManuallyEdited = false
+                    },
                     label = { Text("基础模板") }
                 )
                 AssistChip(
-                    onClick = { htmlContent = HTML_TEMPLATE_RESPONSIVE },
+                    onClick = { 
+                        htmlContent = HTML_TEMPLATE_RESPONSIVE
+                        isFileNameManuallyEdited = false
+                    },
                     label = { Text("响应式") }
                 )
                 AssistChip(
-                    onClick = { htmlContent = HTML_TEMPLATE_CANVAS },
+                    onClick = { 
+                        htmlContent = HTML_TEMPLATE_CANVAS
+                        isFileNameManuallyEdited = false
+                    },
                     label = { Text("Canvas") }
                 )
             }
@@ -152,10 +185,9 @@ fun CreateFileScreen(
                                 name = fileName.trim(),
                                 content = htmlContent,
                                 source = FileSource.LOCAL
-                            ) { fileId ->
-                                navController.navigate(Screen.RunFile.createRoute(fileId)) {
-                                    popUpTo(Screen.CreateFile.route) { inclusive = true }
-                                }
+                            ) {
+                                // 保存成功后返回首页
+                                navController.popBackStack()
                             }
                         }
                     },
@@ -164,7 +196,7 @@ fun CreateFileScreen(
                 ) {
                     Icon(Icons.Default.Save, null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("保存并运行")
+                    Text("保存")
                 }
             }
         }

@@ -1,5 +1,6 @@
 package com.HLaunch.ui.screen
 
+import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,13 +12,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.HLaunch.WebViewActivity
 import com.HLaunch.data.entity.FileSource
 import com.HLaunch.data.entity.HtmlFile
 import com.HLaunch.ui.navigation.Screen
 import com.HLaunch.viewmodel.HtmlFileViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -25,7 +31,8 @@ fun HomeScreen(
     navController: NavController,
     fileViewModel: HtmlFileViewModel
 ) {
-    val recentFiles by fileViewModel.recentFiles.collectAsState()
+    val context = LocalContext.current
+    val allFiles by fileViewModel.allFiles.collectAsState()
     val favoriteFiles by fileViewModel.favoriteFiles.collectAsState()
     val runningTasks by fileViewModel.runningTasks.collectAsState()
     
@@ -103,22 +110,45 @@ fun HomeScreen(
                 items(favoriteFiles.take(5)) { file ->
                     FileListItem(
                         file = file,
-                        onClick = { navController.navigate(Screen.RunFile.createRoute(file.id)) },
+                        onClick = { navController.navigate(Screen.EditFile.createRoute(file.id)) },
+                        onRun = {
+                            // 启动独立WebViewActivity
+                            val intent = Intent(context, WebViewActivity::class.java).apply {
+                                putExtra("FILE_ID", file.id)
+                                putExtra("FILE_NAME", file.name)
+                                putExtra("HTML_CONTENT", file.content)
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+                            }
+                            context.startActivity(intent)
+                        },
                         onEdit = { navController.navigate(Screen.EditFile.createRoute(file.id)) },
                         onFavorite = { fileViewModel.toggleFavorite(file) }
                     )
                 }
             }
             
-            // 最近使用
-            if (recentFiles.isNotEmpty()) {
+            // 全部文件（排除已收藏的，最多显示10个）
+            val nonFavoriteFiles = allFiles.filter { !it.isFavorite }.take(10)
+            if (nonFavoriteFiles.isNotEmpty()) {
                 item {
-                    SectionHeader("最近使用", Icons.Default.History)
+                    SectionHeader("全部文件", Icons.Default.Folder) {
+                        navController.navigate(Screen.FileList.route)
+                    }
                 }
-                items(recentFiles) { file ->
+                items(nonFavoriteFiles) { file ->
                     FileListItem(
                         file = file,
-                        onClick = { navController.navigate(Screen.RunFile.createRoute(file.id)) },
+                        onClick = { navController.navigate(Screen.EditFile.createRoute(file.id)) },
+                        onRun = {
+                            // 启动独立WebViewActivity
+                            val intent = Intent(context, WebViewActivity::class.java).apply {
+                                putExtra("FILE_ID", file.id)
+                                putExtra("FILE_NAME", file.name)
+                                putExtra("HTML_CONTENT", file.content)
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+                            }
+                            context.startActivity(intent)
+                        },
                         onEdit = { navController.navigate(Screen.EditFile.createRoute(file.id)) },
                         onFavorite = { fileViewModel.toggleFavorite(file) }
                     )
@@ -126,7 +156,7 @@ fun HomeScreen(
             }
             
             // 空状态
-            if (recentFiles.isEmpty() && favoriteFiles.isEmpty()) {
+            if (allFiles.isEmpty()) {
                 item {
                     EmptyState(
                         message = "还没有HTML文件\n点击右下角按钮创建",
@@ -279,9 +309,12 @@ private fun RunningTaskCard(
 fun FileListItem(
     file: HtmlFile,
     onClick: () -> Unit,
+    onRun: () -> Unit,
     onEdit: () -> Unit,
     onFavorite: () -> Unit
 ) {
+    val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -314,13 +347,18 @@ fun FileListItem(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = when (file.source) {
-                        FileSource.LOCAL -> "本地创建"
-                        FileSource.IMPORTED -> "导入文件"
-                        FileSource.GIT -> "Git同步"
-                    },
+                    text = "创建于 ${dateFormat.format(Date(file.createdAt))}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            // 启动按钮
+            FilledTonalIconButton(onClick = onRun) {
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = "启动",
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
             

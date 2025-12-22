@@ -1,5 +1,6 @@
 package com.HLaunch.ui.screen
 
+import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -8,12 +9,17 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.HLaunch.WebViewActivity
 import com.HLaunch.data.entity.FileSource
 import com.HLaunch.data.entity.HtmlFile
 import com.HLaunch.ui.navigation.Screen
 import com.HLaunch.viewmodel.HtmlFileViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -21,6 +27,7 @@ fun FileListScreen(
     navController: NavController,
     viewModel: HtmlFileViewModel
 ) {
+    val context = LocalContext.current
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("全部", "本地", "导入", "Git")
     
@@ -88,7 +95,16 @@ fun FileListScreen(
                     items(displayFiles, key = { it.id }) { file ->
                         FileListItemWithDelete(
                             file = file,
-                            onClick = { navController.navigate(Screen.RunFile.createRoute(file.id)) },
+                            onRun = {
+                                // 启动独立WebViewActivity
+                                val intent = Intent(context, WebViewActivity::class.java).apply {
+                                    putExtra("FILE_ID", file.id)
+                                    putExtra("FILE_NAME", file.name)
+                                    putExtra("HTML_CONTENT", file.content)
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+                                }
+                                context.startActivity(intent)
+                            },
                             onEdit = { navController.navigate(Screen.EditFile.createRoute(file.id)) },
                             onFavorite = { viewModel.toggleFavorite(file) },
                             onDelete = { showDeleteDialog = file }
@@ -127,11 +143,13 @@ fun FileListScreen(
 @Composable
 private fun FileListItemWithDelete(
     file: HtmlFile,
-    onClick: () -> Unit,
+    onRun: () -> Unit,
     onEdit: () -> Unit,
     onFavorite: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
+    
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -162,19 +180,19 @@ private fun FileListItemWithDelete(
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
                 Text(
-                    text = when (file.source) {
-                        FileSource.LOCAL -> "本地创建"
-                        FileSource.IMPORTED -> "导入文件"
-                        FileSource.GIT -> "Git同步"
-                    },
+                    text = "创建于 ${dateFormat.format(Date(file.createdAt))}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             
-            // 运行按钮
-            IconButton(onClick = onClick) {
-                Icon(Icons.Default.PlayArrow, "运行")
+            // 启动按钮
+            FilledTonalIconButton(onClick = onRun) {
+                Icon(
+                    Icons.Default.PlayArrow, 
+                    "启动",
+                    tint = MaterialTheme.colorScheme.primary
+                )
             }
             
             // 收藏按钮
