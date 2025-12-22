@@ -20,7 +20,7 @@ android {
     }
 
     signingConfigs {
-        create("release") {
+        register("release") {
             storeFile = file("../hlaunch.jks")
             storePassword = "hlaunch123"
             keyAlias = "hlaunch"
