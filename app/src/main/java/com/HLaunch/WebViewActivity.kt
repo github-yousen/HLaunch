@@ -59,10 +59,11 @@ object WebViewActivityPool {
             putExtra("FILE_ID", fileId)
             putExtra("FILE_NAME", fileName)
             putExtra("HTML_CONTENT", htmlContent)
-            // 关键标志：
-            // NEW_TASK: 在新任务栈启动（配合singleTask）
-            // CLEAR_TOP: 如果已存在，清除该Activity之上的Activity（对于singleTask通常不需要，但加了保险）
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            // 关键标志组合（解决Vivo等厂商系统后台任务合并问题）：
+            // FLAG_ACTIVITY_NEW_DOCUMENT: 以"文档"模式启动，在最近任务中显示为独立卡片
+            // FLAG_ACTIVITY_MULTIPLE_TASK: 允许创建多个任务实例（配合documentLaunchMode="always"）
+            // FLAG_ACTIVITY_NEW_TASK: 在新任务栈启动（非Activity上下文必需）
+            addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         context.startActivity(intent)
     }
