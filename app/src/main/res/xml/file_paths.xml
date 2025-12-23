@@ -2,5 +2,6 @@
 <paths>
     <files-path name="html_files" path="html/"/>
     <cache-path name="apk_cache" path="apk/"/>
+    <cache-path name="update_cache" path="update/"/>
     <external-files-path name="external_html" path="html/"/>
 </paths>
