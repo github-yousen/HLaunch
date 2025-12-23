@@ -32,10 +32,10 @@
             </intent-filter>
         </activity>
         
-        <!-- 独立WebView Activity池，使用 singleInstance 强制独立任务栈，解决厂商系统后台合并问题 -->
+        <!-- 独立WebView Activity池，完全独立进程名（不带冒号）+ 唯一taskAffinity，解决国产系统后台合并问题 -->
         <activity
                 android:name=".WebViewActivity"
-                android:exported="false"
+                android:exported="true"
                 android:label="HTML应用"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
@@ -43,12 +43,12 @@
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity=""
-                android:process=":webapp0" />
+                android:taskAffinity="com.hlaunch.webapp0.task"
+                android:process="com.hlaunch.webapp0" />
         
         <activity
                 android:name=".WebViewActivity1"
-                android:exported="false"
+                android:exported="true"
                 android:label="HTML应用"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
@@ -56,12 +56,12 @@
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity=""
-                android:process=":webapp1" />
+                android:taskAffinity="com.hlaunch.webapp1.task"
+                android:process="com.hlaunch.webapp1" />
         
         <activity
                 android:name=".WebViewActivity2"
-                android:exported="false"
+                android:exported="true"
                 android:label="HTML应用"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
@@ -69,12 +69,12 @@
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity=""
-                android:process=":webapp2" />
+                android:taskAffinity="com.hlaunch.webapp2.task"
+                android:process="com.hlaunch.webapp2" />
         
         <activity
                 android:name=".WebViewActivity3"
-                android:exported="false"
+                android:exported="true"
                 android:label="HTML应用"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
@@ -82,12 +82,12 @@
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity=""
-                android:process=":webapp3" />
+                android:taskAffinity="com.hlaunch.webapp3.task"
+                android:process="com.hlaunch.webapp3" />
         
         <activity
                 android:name=".WebViewActivity4"
-                android:exported="false"
+                android:exported="true"
                 android:label="HTML应用"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
@@ -95,12 +95,12 @@
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity=""
-                android:process=":webapp4" />
+                android:taskAffinity="com.hlaunch.webapp4.task"
+                android:process="com.hlaunch.webapp4" />
         
         <activity
                 android:name=".WebViewActivity5"
-                android:exported="false"
+                android:exported="true"
                 android:label="HTML应用"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
@@ -108,8 +108,8 @@
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity=""
-                android:process=":webapp5" />
+                android:taskAffinity="com.hlaunch.webapp5.task"
+                android:process="com.hlaunch.webapp5" />
         
         <provider
             android:name="androidx.core.content.FileProvider"

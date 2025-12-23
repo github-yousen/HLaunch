@@ -59,10 +59,10 @@ object WebViewActivityPool {
             putExtra("FILE_ID", fileId)
             putExtra("FILE_NAME", fileName)
             putExtra("HTML_CONTENT", htmlContent)
-            // 关键标志：
-            // 使用 singleInstance 模式时，NEW_TASK 是隐式包含的，但显式添加更安全
-            // 移除 FLAG_ACTIVITY_NEW_DOCUMENT 等文档模式标志，回归最强隔离的单实例模式
+            // 强制创建新任务栈，不与主应用共享（解决国产系统后台合并问题）
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK)  // 允许同一Activity启动多个任务
+            addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
         }
         context.startActivity(intent)
     }
@@ -227,15 +227,20 @@ abstract class BaseWebViewActivity : ComponentActivity() {
     }
     
     private fun updateTaskDescription(title: String) {
-        val icon = BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher)
+        // 动态设置任务描述，让系统识别为独立任务（影响任务栏显示）
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             setTaskDescription(ActivityManager.TaskDescription.Builder()
                 .setLabel(title)
                 .setIcon(R.mipmap.ic_launcher)
                 .build())
-        } else {
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            val icon = BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher)
             @Suppress("DEPRECATION")
-            setTaskDescription(ActivityManager.TaskDescription(title, icon))
+            setTaskDescription(ActivityManager.TaskDescription(
+                title,
+                icon,
+                resources.getColor(R.color.purple_500, theme)  // 任务栏颜色
+            ))
         }
     }
     
