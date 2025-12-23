@@ -32,19 +32,18 @@
             </intent-filter>
         </activity>
         
-        <!-- 独立WebView Activity池，使用documentLaunchMode实现独立后台任务卡片 -->
+        <!-- 独立WebView Activity池，使用 singleInstance 强制独立任务栈，解决厂商系统后台合并问题 -->
         <activity
                 android:name=".WebViewActivity"
                 android:exported="false"
                 android:label="HTML应用"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="standard"
-                android:documentLaunchMode="always"
+                android:launchMode="singleInstance"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.HLaunch.webapp0"
+                android:taskAffinity=""
                 android:process=":webapp0" />
         
         <activity
@@ -53,12 +52,11 @@
                 android:label="HTML应用"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="standard"
-                android:documentLaunchMode="always"
+                android:launchMode="singleInstance"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.HLaunch.webapp1"
+                android:taskAffinity=""
                 android:process=":webapp1" />
         
         <activity
@@ -67,12 +65,11 @@
                 android:label="HTML应用"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="standard"
-                android:documentLaunchMode="always"
+                android:launchMode="singleInstance"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.HLaunch.webapp2"
+                android:taskAffinity=""
                 android:process=":webapp2" />
         
         <activity
@@ -81,12 +78,11 @@
                 android:label="HTML应用"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="standard"
-                android:documentLaunchMode="always"
+                android:launchMode="singleInstance"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.HLaunch.webapp3"
+                android:taskAffinity=""
                 android:process=":webapp3" />
         
         <activity
@@ -95,12 +91,11 @@
                 android:label="HTML应用"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="standard"
-                android:documentLaunchMode="always"
+                android:launchMode="singleInstance"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.HLaunch.webapp4"
+                android:taskAffinity=""
                 android:process=":webapp4" />
         
         <activity
@@ -109,12 +104,11 @@
                 android:label="HTML应用"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="standard"
-                android:documentLaunchMode="always"
+                android:launchMode="singleInstance"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.HLaunch.webapp5"
+                android:taskAffinity=""
                 android:process=":webapp5" />
         
         <provider

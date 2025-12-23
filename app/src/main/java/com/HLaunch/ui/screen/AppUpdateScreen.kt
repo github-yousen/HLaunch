@@ -30,10 +30,17 @@ fun AppUpdateScreen(
     val scope = rememberCoroutineScope()
     val updateManager = remember { AppUpdateManager(context) }
     
-    var isUpdating by remember { mutableStateOf(false) }
-    var progressMessage by remember { mutableStateOf("") }
+    // 状态
+    var isChecking by remember { mutableStateOf(false) }
+    var isDownloading by remember { mutableStateOf(false) }
+    var versionInfo by remember { mutableStateOf<AppUpdateManager.VersionInfo?>(null) }
     var apkInfo by remember { mutableStateOf<AppUpdateManager.ApkInfo?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    
+    // 下载进度
+    var downloadProgress by remember { mutableIntStateOf(0) }
+    var downloadedSize by remember { mutableLongStateOf(0L) }
+    var totalSize by remember { mutableLongStateOf(0L) }
     
     val currentVersion = remember { BuildConfig.VERSION_NAME }
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()) }
@@ -91,74 +98,43 @@ fun AppUpdateScreen(
                 }
             }
             
-            // 说明
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Icon(
-                        Icons.Default.Lightbulb,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "从Git仓库的version目录拉取最新APK安装包进行更新。",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            
             // 检查更新按钮
             Button(
                 onClick = {
                     scope.launch {
-                        isUpdating = true
+                        isChecking = true
                         errorMessage = null
+                        versionInfo = null
                         apkInfo = null
                         
                         try {
-                            val info = updateManager.checkAndDownloadLatestApk(
-                                updateManager.getUpdateRepoUrl(), 
-                                updateManager.getUpdateToken()
-                            ) { progress ->
-                                progressMessage = progress
-                            }
-                            apkInfo = info
+                            versionInfo = updateManager.checkUpdate()
                         } catch (e: Exception) {
-                            errorMessage = "更新失败: ${e.message}"
+                            errorMessage = "检查更新失败: ${e.message}"
                         } finally {
-                            isUpdating = false
-                            progressMessage = ""
+                            isChecking = false
                         }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !isUpdating
+                enabled = !isChecking && !isDownloading
             ) {
-                if (isUpdating) {
+                if (isChecking) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
                         strokeWidth = 2.dp
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("正在检查...")
                 } else {
-                    Icon(Icons.Default.Download, null)
+                    Icon(Icons.Default.Refresh, null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("检查更新")
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(if (isUpdating) progressMessage.ifEmpty { "获取中..." } else "获取最新版本")
             }
             
-            // APK信息
-            apkInfo?.let { info ->
+            // 版本信息展示
+            versionInfo?.let { info ->
                 Card(
                     colors = CardDefaults.cardColors(
                         containerColor = if (info.hasUpdate) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant
@@ -170,6 +146,7 @@ fun AppUpdateScreen(
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        // 标题
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 if (info.hasUpdate) Icons.Default.NewReleases else Icons.Default.CheckCircle,
@@ -184,25 +161,29 @@ fun AppUpdateScreen(
                             )
                         }
                         
+                        // 版本对比
                         Text(
-                            text = "当前版本: v$currentVersion → 远程版本: v${info.remoteVersion}",
-                            style = MaterialTheme.typography.bodyMedium
+                            text = "v$currentVersion → v${info.remoteVersion}",
+                            style = MaterialTheme.typography.bodyLarge
                         )
                         
-                        Text(
-                            text = "文件名: ${info.fileName}",
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                        // 文件信息
+                        if (info.fileSize > 0) {
+                            Text(
+                                text = "文件大小: ${formatFileSize(info.fileSize)}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
                         
                         Text(
-                            text = "提交时间: ${dateFormat.format(Date(info.commitTime))}",
+                            text = "更新时间: ${dateFormat.format(Date(info.commitTime))}",
                             style = MaterialTheme.typography.bodySmall
                         )
                         
                         // 更新说明
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                         Text(
-                            text = "更新说明:",
+                            text = "更新说明",
                             style = MaterialTheme.typography.labelMedium
                         )
                         Text(
@@ -210,17 +191,76 @@ fun AppUpdateScreen(
                             style = MaterialTheme.typography.bodySmall
                         )
                         
-                        // 安装按钮（仅有更新时显示）
+                        // 下载/安装按钮
                         if (info.hasUpdate) {
-                            Button(
-                                onClick = {
-                                    installApk(context, info.apkFile)
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(Icons.Default.InstallMobile, null)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("安装更新")
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            if (apkInfo != null) {
+                                // 已下载完成，显示安装按钮
+                                Button(
+                                    onClick = {
+                                        apkInfo?.let { installApk(context, it.apkFile) }
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(Icons.Default.InstallMobile, null)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("安装更新")
+                                }
+                            } else if (isDownloading) {
+                                // 下载中，显示进度
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    LinearProgressIndicator(
+                                        progress = { downloadProgress / 100f },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = "${formatFileSize(downloadedSize)} / ${formatFileSize(totalSize)}",
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                        Text(
+                                            text = "$downloadProgress%",
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                }
+                            } else {
+                                // 显示下载按钮
+                                Button(
+                                    onClick = {
+                                        scope.launch {
+                                            isDownloading = true
+                                            errorMessage = null
+                                            downloadProgress = 0
+                                            downloadedSize = 0
+                                            totalSize = info.fileSize
+                                            
+                                            try {
+                                                apkInfo = updateManager.downloadApk(info) { downloaded, total, percent ->
+                                                    downloadedSize = downloaded
+                                                    totalSize = total
+                                                    downloadProgress = percent
+                                                }
+                                            } catch (e: Exception) {
+                                                errorMessage = "下载失败: ${e.message}"
+                                            } finally {
+                                                isDownloading = false
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(Icons.Default.Download, null)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("下载更新")
+                                }
                             }
                         }
                     }
@@ -255,6 +295,15 @@ fun AppUpdateScreen(
                 }
             }
         }
+    }
+}
+
+private fun formatFileSize(bytes: Long): String {
+    return when {
+        bytes < 1024 -> "$bytes B"
+        bytes < 1024 * 1024 -> String.format("%.1f KB", bytes / 1024.0)
+        bytes < 1024 * 1024 * 1024 -> String.format("%.1f MB", bytes / (1024.0 * 1024))
+        else -> String.format("%.2f GB", bytes / (1024.0 * 1024 * 1024))
     }
 }
 

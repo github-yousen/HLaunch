@@ -4,36 +4,48 @@ import android.content.Context
 import com.HLaunch.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.eclipse.jgit.api.Git
-import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.File
+import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 
 class AppUpdateManager(private val context: Context) {
     
     companion object {
-        // 固定的更新仓库配置（优先使用Gitee，国内访问更快）
-        private const val UPDATE_REPO_URL = "https://gitee.com/yousen912/hlaunch.git"
-        private const val UPDATE_TOKEN = "130a7cabc039011bcc4cb468b9e01bc8"
-        // GitHub备用配置（国内访问较慢）
-        // private const val UPDATE_REPO_URL = "https://ghproxy.com/https://github.com/github-yousen/HLaunch.git"
-        // private const val UPDATE_TOKEN = "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"
+        // Gitee API 配置
+        private const val GITEE_OWNER = "yousen912"
+        private const val GITEE_REPO = "hlaunch"
+        private const val GITEE_TOKEN = "130a7cabc039011bcc4cb468b9e01bc8"
+        private const val VERSION_DIR = "version"
+        
+        // Gitee API 地址
+        private const val GITEE_API_BASE = "https://gitee.com/api/v5"
     }
     
     private val updateDir = File(context.cacheDir, "update").also { it.mkdirs() }
     
-    // APK信息
+    // 版本信息（仅检查时使用）
+    data class VersionInfo(
+        val remoteVersion: String,
+        val fileName: String,
+        val downloadUrl: String,
+        val hasUpdate: Boolean,
+        val commitMessage: String,
+        val commitTime: Long,
+        val fileSize: Long
+    )
+    
+    // APK信息（下载完成后使用）
     data class ApkInfo(
         val apkFile: File,
         val fileName: String,
-        val lastModified: Long,
         val remoteVersion: String,
         val hasUpdate: Boolean,
         val commitMessage: String,
         val commitTime: Long
     )
-    
-    fun getUpdateRepoUrl(): String = UPDATE_REPO_URL
-    fun getUpdateToken(): String = UPDATE_TOKEN
     
     // 从APK文件名解析版本号，格式：xxx_v1.0.apk 或 xxx_v0.1.apk
     private fun parseVersionFromFileName(fileName: String): String? {
@@ -54,94 +66,162 @@ class AppUpdateManager(private val context: Context) {
         return 0
     }
     
-    // 检查并下载最新APK
-    suspend fun checkAndDownloadLatestApk(repoUrl: String, token: String?, onProgress: (String) -> Unit): ApkInfo? = withContext(Dispatchers.IO) {
-        val repoDir = File(updateDir, "update_repo")
-        var git: Git? = null
+    /**
+     * 检查更新（不下载APK，仅获取版本信息）
+     * 使用 Gitee API 获取 version 目录下的文件列表
+     */
+    suspend fun checkUpdate(): VersionInfo = withContext(Dispatchers.IO) {
+        // 1. 获取 version 目录下的文件列表
+        val contentsUrl = "$GITEE_API_BASE/repos/$GITEE_OWNER/$GITEE_REPO/contents/$VERSION_DIR?access_token=$GITEE_TOKEN"
+        val contentsJson = httpGet(contentsUrl)
+        val filesArray = JSONArray(contentsJson)
+        
+        // 2. 筛选 APK 文件并找到版本号最高的
+        var latestApk: JSONObject? = null
+        var latestVersion: String? = null
+        
+        for (i in 0 until filesArray.length()) {
+            val file = filesArray.getJSONObject(i)
+            val fileName = file.getString("name")
+            if (fileName.endsWith(".apk", ignoreCase = true)) {
+                val version = parseVersionFromFileName(fileName)
+                if (version != null) {
+                    if (latestVersion == null || compareVersions(version, latestVersion) > 0) {
+                        latestVersion = version
+                        latestApk = file
+                    }
+                }
+            }
+        }
+        
+        if (latestApk == null || latestVersion == null) {
+            throw Exception("未找到有效的APK文件")
+        }
+        
+        val fileName = latestApk.getString("name")
+        val downloadUrl = latestApk.getString("download_url")
+        val fileSize = latestApk.optLong("size", 0)
+        
+        // 3. 获取该文件的最新 commit 信息
+        val commitsUrl = "$GITEE_API_BASE/repos/$GITEE_OWNER/$GITEE_REPO/commits?access_token=$GITEE_TOKEN&path=$VERSION_DIR/$fileName&per_page=1"
+        val commitsJson = httpGet(commitsUrl)
+        val commitsArray = JSONArray(commitsJson)
+        
+        var commitMessage = "无更新说明"
+        var commitTime = System.currentTimeMillis()
+        
+        if (commitsArray.length() > 0) {
+            val commit = commitsArray.getJSONObject(0)
+            val commitObj = commit.getJSONObject("commit")
+            commitMessage = commitObj.getString("message").trim()
+            val dateStr = commitObj.getJSONObject("committer").getString("date")
+            commitTime = parseIso8601Date(dateStr)
+        }
+        
+        // 4. 比较版本
+        val currentVersion = BuildConfig.VERSION_NAME
+        val hasUpdate = compareVersions(latestVersion, currentVersion) > 0
+        
+        VersionInfo(
+            remoteVersion = latestVersion,
+            fileName = fileName,
+            downloadUrl = downloadUrl,
+            hasUpdate = hasUpdate,
+            commitMessage = commitMessage,
+            commitTime = commitTime,
+            fileSize = fileSize
+        )
+    }
+    
+    /**
+     * 下载 APK 文件（带进度回调）
+     */
+    suspend fun downloadApk(
+        versionInfo: VersionInfo,
+        onProgress: (downloaded: Long, total: Long, percent: Int) -> Unit
+    ): ApkInfo = withContext(Dispatchers.IO) {
+        val targetFile = File(updateDir, "update.apk")
+        if (targetFile.exists()) {
+            targetFile.delete()
+        }
+        
+        val url = URL(versionInfo.downloadUrl)
+        val connection = url.openConnection() as HttpURLConnection
+        connection.setRequestProperty("Authorization", "token $GITEE_TOKEN")
+        connection.connectTimeout = 30000
+        connection.readTimeout = 60000
         
         try {
-            onProgress("正在克隆仓库...")
+            connection.connect()
             
-            // 克隆仓库
-            if (repoDir.exists()) {
-                repoDir.deleteRecursively()
-            }
-            repoDir.mkdirs()
-            
-            val cloneCommand = Git.cloneRepository()
-                .setURI(repoUrl)
-                .setDirectory(repoDir)
-            
-            if (!token.isNullOrEmpty()) {
-                cloneCommand.setCredentialsProvider(
-                    UsernamePasswordCredentialsProvider("oauth2", token)
-                )
+            if (connection.responseCode != HttpURLConnection.HTTP_OK) {
+                throw Exception("下载失败: HTTP ${connection.responseCode}")
             }
             
-            git = cloneCommand.call()
+            val totalSize = connection.contentLengthLong.takeIf { it > 0 } ?: versionInfo.fileSize
+            var downloadedSize = 0L
             
-            onProgress("正在查找APK文件...")
-            
-            // 在version目录下查找最新的APK文件
-            val versionDir = File(repoDir, "version")
-            if (!versionDir.exists() || !versionDir.isDirectory) {
-                throw Exception("未找到version目录")
+            connection.inputStream.use { input ->
+                FileOutputStream(targetFile).use { output ->
+                    val buffer = ByteArray(8192)
+                    var bytesRead: Int
+                    var lastReportTime = 0L
+                    
+                    while (input.read(buffer).also { bytesRead = it } != -1) {
+                        output.write(buffer, 0, bytesRead)
+                        downloadedSize += bytesRead
+                        
+                        // 限制回调频率，每100ms最多回调一次
+                        val now = System.currentTimeMillis()
+                        if (now - lastReportTime >= 100 || downloadedSize == totalSize) {
+                            val percent = if (totalSize > 0) ((downloadedSize * 100) / totalSize).toInt() else 0
+                            onProgress(downloadedSize, totalSize, percent)
+                            lastReportTime = now
+                        }
+                    }
+                }
             }
-            
-            // 查找所有APK文件，按修改时间排序取最新的
-            val apkFiles = versionDir.listFiles { file -> 
-                file.isFile && file.name.endsWith(".apk", ignoreCase = true)
-            }
-            
-            if (apkFiles.isNullOrEmpty()) {
-                throw Exception("version目录下未找到APK文件")
-            }
-            
-            // 取修改时间最新的APK
-            val latestApk = apkFiles.maxByOrNull { it.lastModified() }!!
-            
-            // 解析远程版本号
-            val remoteVersion = parseVersionFromFileName(latestApk.name) ?: throw Exception("无法从文件名解析版本号: ${latestApk.name}")
-            val currentVersion = BuildConfig.VERSION_NAME
-            val hasUpdate = compareVersions(remoteVersion, currentVersion) > 0
-            
-            onProgress("正在获取更新信息...")
-            
-            // 获取该APK文件对应的commit信息
-            val apkRelativePath = "version/${latestApk.name}"
-            val logCommand = git.log()
-                .addPath(apkRelativePath)
-                .setMaxCount(1)
-            val commits = logCommand.call()
-            val latestCommit = commits.firstOrNull()
-            val commitMessage = latestCommit?.fullMessage?.trim() ?: "无更新说明"
-            val commitTime = latestCommit?.commitTime?.toLong()?.times(1000) ?: latestApk.lastModified()
-            
-            onProgress("正在复制APK文件...")
-            
-            // 复制到缓存目录
-            val targetApk = File(updateDir, "update.apk")
-            if (targetApk.exists()) {
-                targetApk.delete()
-            }
-            latestApk.copyTo(targetApk)
             
             ApkInfo(
-                apkFile = targetApk,
-                fileName = latestApk.name,
-                lastModified = latestApk.lastModified(),
-                remoteVersion = remoteVersion,
-                hasUpdate = hasUpdate,
-                commitMessage = commitMessage,
-                commitTime = commitTime
+                apkFile = targetFile,
+                fileName = versionInfo.fileName,
+                remoteVersion = versionInfo.remoteVersion,
+                hasUpdate = versionInfo.hasUpdate,
+                commitMessage = versionInfo.commitMessage,
+                commitTime = versionInfo.commitTime
             )
-        } catch (e: Exception) {
-            e.printStackTrace()
-            throw e
         } finally {
-            git?.close()
-            // 清理临时仓库目录
-            repoDir.deleteRecursively()
+            connection.disconnect()
+        }
+    }
+    
+    private fun httpGet(urlString: String): String {
+        val url = URL(urlString)
+        val connection = url.openConnection() as HttpURLConnection
+        connection.requestMethod = "GET"
+        connection.connectTimeout = 15000
+        connection.readTimeout = 15000
+        
+        try {
+            connection.connect()
+            
+            if (connection.responseCode != HttpURLConnection.HTTP_OK) {
+                throw Exception("HTTP请求失败: ${connection.responseCode}")
+            }
+            
+            return connection.inputStream.bufferedReader().use { it.readText() }
+        } finally {
+            connection.disconnect()
+        }
+    }
+    
+    private fun parseIso8601Date(dateStr: String): Long {
+        return try {
+            // 格式: 2024-01-01T12:00:00+08:00
+            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", java.util.Locale.getDefault())
+            sdf.parse(dateStr)?.time ?: System.currentTimeMillis()
+        } catch (e: Exception) {
+            System.currentTimeMillis()
         }
     }
 }
