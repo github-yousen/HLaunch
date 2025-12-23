@@ -32,14 +32,14 @@
             </intent-filter>
         </activity>
         
-        <!-- 独立WebView Activity池，模仿微信小程序的documentLaunchMode="always"实现独立后台卡片 -->
+        <!-- 独立WebView Activity池，采用标准"文档模式"配置，确保国产系统独立卡片显示 -->
         <activity
                 android:name=".WebViewActivity"
                 android:exported="true"
                 android:label="HTML应用"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="singleTask"
+                android:launchMode="standard"
                 android:documentLaunchMode="always"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
@@ -53,7 +53,7 @@
                 android:label="HTML应用"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="singleTask"
+                android:launchMode="standard"
                 android:documentLaunchMode="always"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
@@ -67,7 +67,7 @@
                 android:label="HTML应用"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="singleTask"
+                android:launchMode="standard"
                 android:documentLaunchMode="always"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
@@ -81,7 +81,7 @@
                 android:label="HTML应用"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="singleTask"
+                android:launchMode="standard"
                 android:documentLaunchMode="always"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
@@ -95,7 +95,7 @@
                 android:label="HTML应用"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="singleTask"
+                android:launchMode="standard"
                 android:documentLaunchMode="always"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
@@ -109,7 +109,7 @@
                 android:label="HTML应用"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="singleTask"
+                android:launchMode="standard"
                 android:documentLaunchMode="always"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"

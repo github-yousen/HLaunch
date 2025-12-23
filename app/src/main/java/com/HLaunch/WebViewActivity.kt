@@ -50,7 +50,7 @@ object WebViewActivityPool {
     /**
      * 启动WebView Activity
      * 自动分配或复用槽位（LRU策略）
-     * 使用微信小程序相同的 FLAG_ACTIVITY_NEW_DOCUMENT 标志实现独立后台卡片
+     * 强化标志位：使用 NEW_DOCUMENT + MULTIPLE_TASK 强制 vivo 系统创建独立任务卡片
      */
     fun launchWebView(context: Context, fileId: Long, fileName: String, htmlContent: String) {
         val slotIndex = allocateSlot(context, fileId)
@@ -60,11 +60,12 @@ object WebViewActivityPool {
             putExtra("FILE_ID", fileId)
             putExtra("FILE_NAME", fileName)
             putExtra("HTML_CONTENT", htmlContent)
-            // 微信小程序使用的关键标志组合：
-            // FLAG_ACTIVITY_NEW_DOCUMENT: 以文档模式启动，在Recents中显示为独立卡片
-            // FLAG_ACTIVITY_NEW_TASK: 在新任务栈启动
-            // 配合 Manifest 中的 documentLaunchMode="always" 使用
-            addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_NEW_TASK)
+            
+            // 关键：NEW_DOCUMENT 告诉系统这是一个独立的文档/任务
+            // MULTIPLE_TASK 确保即使 Activity 类相同，也创建新任务而非复用旧任务
+            addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT)
+            addFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         context.startActivity(intent)
     }
