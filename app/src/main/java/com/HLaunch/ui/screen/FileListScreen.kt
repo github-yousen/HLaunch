@@ -12,7 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.HLaunch.WebViewActivity
+import com.HLaunch.WebViewActivityPool
 import com.HLaunch.data.entity.FileSource
 import com.HLaunch.data.entity.HtmlFile
 import com.HLaunch.ui.navigation.Screen
@@ -95,16 +95,10 @@ fun FileListScreen(
                     items(displayFiles, key = { it.id }) { file ->
                         FileListItemWithDelete(
                             file = file,
-                            onRun = {
-                                // 启动独立WebViewActivity
-                                val intent = Intent(context, WebViewActivity::class.java).apply {
-                                    putExtra("FILE_ID", file.id)
-                                    putExtra("FILE_NAME", file.name)
-                                    putExtra("HTML_CONTENT", file.content)
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
-                                }
-                                context.startActivity(intent)
-                            },
+                        onRun = {
+                            // 使用Activity池启动独立WebViewActivity
+                            WebViewActivityPool.launchWebView(context, file.id, file.name, file.content)
+                        },
                             onEdit = { navController.navigate(Screen.EditFile.createRoute(file.id)) },
                             onFavorite = { viewModel.toggleFavorite(file) },
                             onDelete = { showDeleteDialog = file }

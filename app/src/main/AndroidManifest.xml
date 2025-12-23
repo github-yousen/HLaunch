@@ -32,22 +32,84 @@
             </intent-filter>
         </activity>
         
-        <!-- 独立WebView Activity，作为独立应用在后台运行 -->
+        <!-- 独立WebView Activity池，类似微信小程序的实现方式，每个Activity有独立进程和taskAffinity -->
         <activity
                 android:name=".WebViewActivity"
-                android:exported="true"
+                android:exported="false"
                 android:label="HTML应用"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="singleInstance"
-                android:documentLaunchMode="always"
+                android:launchMode="singleTask"
                 android:autoRemoveFromRecents="false"
-                android:persistableMode="persistAcrossReboots"
                 android:excludeFromRecents="false"
-                android:resizeableActivity="true"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.HLaunch.webapp"
-                android:process=":webapp" />
+                android:taskAffinity="com.HLaunch.webapp0"
+                android:process=":webapp0" />
+        
+        <activity
+                android:name=".WebViewActivity1"
+                android:exported="false"
+                android:label="HTML应用"
+                android:icon="@mipmap/ic_launcher"
+                android:theme="@style/Theme.HLaunch"
+                android:launchMode="singleTask"
+                android:autoRemoveFromRecents="false"
+                android:excludeFromRecents="false"
+                android:configChanges="orientation|screenSize|keyboardHidden"
+                android:taskAffinity="com.HLaunch.webapp1"
+                android:process=":webapp1" />
+        
+        <activity
+                android:name=".WebViewActivity2"
+                android:exported="false"
+                android:label="HTML应用"
+                android:icon="@mipmap/ic_launcher"
+                android:theme="@style/Theme.HLaunch"
+                android:launchMode="singleTask"
+                android:autoRemoveFromRecents="false"
+                android:excludeFromRecents="false"
+                android:configChanges="orientation|screenSize|keyboardHidden"
+                android:taskAffinity="com.HLaunch.webapp2"
+                android:process=":webapp2" />
+        
+        <activity
+                android:name=".WebViewActivity3"
+                android:exported="false"
+                android:label="HTML应用"
+                android:icon="@mipmap/ic_launcher"
+                android:theme="@style/Theme.HLaunch"
+                android:launchMode="singleTask"
+                android:autoRemoveFromRecents="false"
+                android:excludeFromRecents="false"
+                android:configChanges="orientation|screenSize|keyboardHidden"
+                android:taskAffinity="com.HLaunch.webapp3"
+                android:process=":webapp3" />
+        
+        <activity
+                android:name=".WebViewActivity4"
+                android:exported="false"
+                android:label="HTML应用"
+                android:icon="@mipmap/ic_launcher"
+                android:theme="@style/Theme.HLaunch"
+                android:launchMode="singleTask"
+                android:autoRemoveFromRecents="false"
+                android:excludeFromRecents="false"
+                android:configChanges="orientation|screenSize|keyboardHidden"
+                android:taskAffinity="com.HLaunch.webapp4"
+                android:process=":webapp4" />
+        
+        <activity
+                android:name=".WebViewActivity5"
+                android:exported="false"
+                android:label="HTML应用"
+                android:icon="@mipmap/ic_launcher"
+                android:theme="@style/Theme.HLaunch"
+                android:launchMode="singleTask"
+                android:autoRemoveFromRecents="false"
+                android:excludeFromRecents="false"
+                android:configChanges="orientation|screenSize|keyboardHidden"
+                android:taskAffinity="com.HLaunch.webapp5"
+                android:process=":webapp5" />
         
         <provider
             android:name="androidx.core.content.FileProvider"

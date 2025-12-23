@@ -16,7 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.HLaunch.WebViewActivity
+import com.HLaunch.WebViewActivityPool
 import com.HLaunch.data.entity.FileSource
 import com.HLaunch.data.entity.HtmlFile
 import com.HLaunch.ui.navigation.Screen
@@ -112,14 +112,8 @@ fun HomeScreen(
                         file = file,
                         onClick = { navController.navigate(Screen.EditFile.createRoute(file.id)) },
                         onRun = {
-                            // 启动独立WebViewActivity
-                            val intent = Intent(context, WebViewActivity::class.java).apply {
-                                putExtra("FILE_ID", file.id)
-                                putExtra("FILE_NAME", file.name)
-                                putExtra("HTML_CONTENT", file.content)
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
-                            }
-                            context.startActivity(intent)
+                            // 使用Activity池启动独立WebViewActivity
+                            WebViewActivityPool.launchWebView(context, file.id, file.name, file.content)
                         },
                         onEdit = { navController.navigate(Screen.EditFile.createRoute(file.id)) },
                         onFavorite = { fileViewModel.toggleFavorite(file) }
@@ -140,14 +134,8 @@ fun HomeScreen(
                         file = file,
                         onClick = { navController.navigate(Screen.EditFile.createRoute(file.id)) },
                         onRun = {
-                            // 启动独立WebViewActivity
-                            val intent = Intent(context, WebViewActivity::class.java).apply {
-                                putExtra("FILE_ID", file.id)
-                                putExtra("FILE_NAME", file.name)
-                                putExtra("HTML_CONTENT", file.content)
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
-                            }
-                            context.startActivity(intent)
+                            // 使用Activity池启动独立WebViewActivity
+                            WebViewActivityPool.launchWebView(context, file.id, file.name, file.content)
                         },
                         onEdit = { navController.navigate(Screen.EditFile.createRoute(file.id)) },
                         onFavorite = { fileViewModel.toggleFavorite(file) }

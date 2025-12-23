@@ -1,6 +1,11 @@
 package com.HLaunch
 
 import android.annotation.SuppressLint
+import android.app.ActivityManager
+import android.content.Context
+import android.content.Intent
+import android.graphics.BitmapFactory
+import android.os.Build
 import android.os.Bundle
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
@@ -22,9 +27,70 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.HLaunch.ui.theme.HLaunchTheme
 
 /**
- * 独立WebView Activity，作为独立应用在后台运行
+ * WebView Activity池管理器，类似微信小程序的实现方式
  */
-class WebViewActivity : ComponentActivity() {
+object WebViewActivityPool {
+    // 预定义5个Activity槽位
+    private val activitySlots = arrayOf(
+        WebViewActivity1::class.java,
+        WebViewActivity2::class.java,
+        WebViewActivity3::class.java,
+        WebViewActivity4::class.java,
+        WebViewActivity5::class.java
+    )
+    
+    // 记录每个槽位当前运行的fileId，-1表示空闲
+    private val slotFileIds = longArrayOf(-1, -1, -1, -1, -1)
+    
+    // 获取一个可用的Activity类，优先复用已有的，否则分配新的
+    @Synchronized
+    fun getActivityClass(fileId: Long): Class<out BaseWebViewActivity> {
+        // 检查是否已经有该文件的Activity在运行
+        for (i in slotFileIds.indices) {
+            if (slotFileIds[i] == fileId) {
+                return activitySlots[i]
+            }
+        }
+        // 找一个空闲槽位
+        for (i in slotFileIds.indices) {
+            if (slotFileIds[i] == -1L) {
+                slotFileIds[i] = fileId
+                return activitySlots[i]
+            }
+        }
+        // 没有空闲槽位，复用最早的槽位（槽位0）
+        slotFileIds[0] = fileId
+        return activitySlots[0]
+    }
+    
+    // 释放槽位
+    @Synchronized
+    fun releaseSlot(fileId: Long) {
+        for (i in slotFileIds.indices) {
+            if (slotFileIds[i] == fileId) {
+                slotFileIds[i] = -1
+                break
+            }
+        }
+    }
+    
+    // 启动WebView Activity
+    fun launchWebView(context: Context, fileId: Long, fileName: String, htmlContent: String) {
+        val activityClass = getActivityClass(fileId)
+        val intent = Intent(context, activityClass).apply {
+            putExtra("FILE_ID", fileId)
+            putExtra("FILE_NAME", fileName)
+            putExtra("HTML_CONTENT", htmlContent)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
+    }
+}
+
+/**
+ * 基础WebView Activity，包含所有WebView逻辑
+ */
+abstract class BaseWebViewActivity : ComponentActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,18 +99,53 @@ class WebViewActivity : ComponentActivity() {
         val fileName = intent.getStringExtra("FILE_NAME") ?: "HTML应用"
         val htmlContent = intent.getStringExtra("HTML_CONTENT") ?: ""
         
+        // 设置任务栏显示的标题和图标
+        setTaskDescription(fileId, fileName)
+        
         setContent {
             HLaunchTheme {
                 WebViewScreen(
                     fileId = fileId,
                     fileName = fileName,
                     htmlContent = htmlContent,
-                    onClose = { finish() }
+                    onClose = { finish() },
+                    onTitleChanged = { newTitle -> setTaskDescription(fileId, newTitle) }
                 )
             }
         }
     }
+    
+    private fun setTaskDescription(fileId: Long, title: String) {
+        val icon = BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            setTaskDescription(ActivityManager.TaskDescription.Builder()
+                .setLabel(title)
+                .setIcon(R.mipmap.ic_launcher)
+                .build())
+        } else {
+            @Suppress("DEPRECATION")
+            setTaskDescription(ActivityManager.TaskDescription(title, icon))
+        }
+    }
+    
+    override fun onDestroy() {
+        val fileId = intent.getLongExtra("FILE_ID", -1)
+        if (fileId != -1L) {
+            WebViewActivityPool.releaseSlot(fileId)
+        }
+        super.onDestroy()
+    }
 }
+
+// 预定义5个独立的WebView Activity，每个有独立的进程和taskAffinity
+class WebViewActivity1 : BaseWebViewActivity()
+class WebViewActivity2 : BaseWebViewActivity()
+class WebViewActivity3 : BaseWebViewActivity()
+class WebViewActivity4 : BaseWebViewActivity()
+class WebViewActivity5 : BaseWebViewActivity()
+
+// 保留原来的WebViewActivity类名以兼容旧代码
+class WebViewActivity : BaseWebViewActivity()
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,7 +153,8 @@ private fun WebViewScreen(
     fileId: Long,
     fileName: String,
     htmlContent: String,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onTitleChanged: (String) -> Unit = {}
 ) {
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     var canGoBack by remember { mutableStateOf(false) }
@@ -132,7 +234,10 @@ private fun WebViewScreen(
                     htmlContent = htmlContent,
                     onWebViewCreated = { webViewRef = it },
                     onCanGoBackChanged = { canGoBack = it },
-                    onTitleChanged = { pageTitle = it }
+                    onTitleChanged = { 
+                        pageTitle = it
+                        onTitleChanged(it)
+                    }
                 )
             }
         }
