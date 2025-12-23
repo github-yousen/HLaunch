@@ -41,8 +41,9 @@
                 android:launchMode="standard"
                 android:documentLaunchMode="always"
                 android:autoRemoveFromRecents="false"
+                android:persistableMode="persistAcrossReboots"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="" />
+                android:taskAffinity="com.HLaunch.htmlapp" />
         
         <provider
             android:name="androidx.core.content.FileProvider"
