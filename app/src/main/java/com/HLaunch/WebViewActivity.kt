@@ -50,7 +50,7 @@ object WebViewActivityPool {
     /**
      * 启动WebView Activity
      * 自动分配或复用槽位（LRU策略）
-     * 强化标志位：使用 NEW_DOCUMENT + MULTIPLE_TASK 强制 vivo 系统创建独立任务卡片
+     * 修改：使用 singleTask + NEW_TASK 确保任务持久化存在于后台
      */
     fun launchWebView(context: Context, fileId: Long, fileName: String, htmlContent: String) {
         val slotIndex = allocateSlot(context, fileId)
@@ -61,10 +61,8 @@ object WebViewActivityPool {
             putExtra("FILE_NAME", fileName)
             putExtra("HTML_CONTENT", htmlContent)
             
-            // 关键：NEW_DOCUMENT 告诉系统这是一个独立的文档/任务
-            // MULTIPLE_TASK 确保即使 Activity 类相同，也创建新任务而非复用旧任务
-            addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT)
-            addFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+            // 使用 NEW_TASK 启动新任务（配合 taskAffinity 和 singleTask）
+            // 去除 NEW_DOCUMENT 和 MULTIPLE_TASK 以避免任务被系统过早清理
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         context.startActivity(intent)
