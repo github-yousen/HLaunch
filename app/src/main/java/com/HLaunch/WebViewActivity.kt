@@ -50,6 +50,7 @@ object WebViewActivityPool {
     /**
      * 启动WebView Activity
      * 自动分配或复用槽位（LRU策略）
+     * 使用微信小程序相同的 FLAG_ACTIVITY_NEW_DOCUMENT 标志实现独立后台卡片
      */
     fun launchWebView(context: Context, fileId: Long, fileName: String, htmlContent: String) {
         val slotIndex = allocateSlot(context, fileId)
@@ -59,10 +60,11 @@ object WebViewActivityPool {
             putExtra("FILE_ID", fileId)
             putExtra("FILE_NAME", fileName)
             putExtra("HTML_CONTENT", htmlContent)
-            // 强制创建新任务栈，不与主应用共享（解决国产系统后台合并问题）
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            addFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK)  // 允许同一Activity启动多个任务
-            addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+            // 微信小程序使用的关键标志组合：
+            // FLAG_ACTIVITY_NEW_DOCUMENT: 以文档模式启动，在Recents中显示为独立卡片
+            // FLAG_ACTIVITY_NEW_TASK: 在新任务栈启动
+            // 配合 Manifest 中的 documentLaunchMode="always" 使用
+            addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         context.startActivity(intent)
     }
