@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Bundle
@@ -25,11 +26,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.HLaunch.ui.theme.HLaunchTheme
+import org.json.JSONArray
+import org.json.JSONObject
 
 /**
  * WebView Activity池管理器，类似微信小程序的实现方式
+ * 使用 LRU 策略和持久化存储来管理 Slot 分配
  */
 object WebViewActivityPool {
+    private const val PREFS_NAME = "webview_pool_prefs"
+    private const val KEY_POOL_STATE = "pool_state"
+    private const val MAX_SLOTS = 5
+    
     // 预定义5个Activity槽位
     private val activitySlots = arrayOf(
         WebViewActivity1::class.java,
@@ -39,51 +47,122 @@ object WebViewActivityPool {
         WebViewActivity5::class.java
     )
     
-    // 记录每个槽位当前运行的fileId，-1表示空闲
-    private val slotFileIds = longArrayOf(-1, -1, -1, -1, -1)
-    
-    // 获取一个可用的Activity类，优先复用已有的，否则分配新的
-    @Synchronized
-    fun getActivityClass(fileId: Long): Class<out BaseWebViewActivity> {
-        // 检查是否已经有该文件的Activity在运行
-        for (i in slotFileIds.indices) {
-            if (slotFileIds[i] == fileId) {
-                return activitySlots[i]
-            }
-        }
-        // 找一个空闲槽位
-        for (i in slotFileIds.indices) {
-            if (slotFileIds[i] == -1L) {
-                slotFileIds[i] = fileId
-                return activitySlots[i]
-            }
-        }
-        // 没有空闲槽位，复用最早的槽位（槽位0）
-        slotFileIds[0] = fileId
-        return activitySlots[0]
-    }
-    
-    // 释放槽位
-    @Synchronized
-    fun releaseSlot(fileId: Long) {
-        for (i in slotFileIds.indices) {
-            if (slotFileIds[i] == fileId) {
-                slotFileIds[i] = -1
-                break
-            }
-        }
-    }
-    
-    // 启动WebView Activity
+    /**
+     * 启动WebView Activity
+     * 自动分配或复用槽位（LRU策略）
+     */
     fun launchWebView(context: Context, fileId: Long, fileName: String, htmlContent: String) {
-        val activityClass = getActivityClass(fileId)
+        val slotIndex = allocateSlot(context, fileId)
+        val activityClass = activitySlots[slotIndex]
+        
         val intent = Intent(context, activityClass).apply {
             putExtra("FILE_ID", fileId)
             putExtra("FILE_NAME", fileName)
             putExtra("HTML_CONTENT", htmlContent)
+            // 关键标志：
+            // NEW_TASK: 在新任务栈启动（配合singleTask）
+            // CLEAR_TOP: 如果已存在，清除该Activity之上的Activity（对于singleTask通常不需要，但加了保险）
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         context.startActivity(intent)
+    }
+
+    /**
+     * 分配槽位算法
+     * 1. 如果已存在该文件的槽位 -> 复用并更新为MRU（最近使用）
+     * 2. 如果有空闲槽位 -> 分配新槽位
+     * 3. 如果已满 -> 淘汰LRU（最久未使用）的槽位并分配给新文件
+     */
+    @Synchronized
+    private fun allocateSlot(context: Context, fileId: Long): Int {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val jsonStr = prefs.getString(KEY_POOL_STATE, "[]")
+        val jsonArray = JSONArray(jsonStr)
+        
+        // 解析当前状态: List<Pair<FileId, SlotIndex>>，列表顺序即为LRU顺序（末尾为MRU）
+        val state = ArrayList<Pair<Long, Int>>()
+        val usedSlots = HashSet<Int>()
+        
+        for (i in 0 until jsonArray.length()) {
+            val obj = jsonArray.getJSONObject(i)
+            val fid = obj.getLong("f")
+            val sid = obj.getInt("s")
+            state.add(fid to sid)
+            usedSlots.add(sid)
+        }
+        
+        // 1. 查找是否已存在
+        val existingIndex = state.indexOfFirst { it.first == fileId }
+        if (existingIndex != -1) {
+            // 命中：移到末尾（MRU）
+            val item = state.removeAt(existingIndex)
+            state.add(item)
+            saveState(prefs, state)
+            return item.second
+        }
+        
+        // 2. 查找空闲槽位
+        if (state.size < MAX_SLOTS) {
+            var freeSlot = -1
+            for (i in 0 until MAX_SLOTS) {
+                if (i !in usedSlots) {
+                    freeSlot = i
+                    break
+                }
+            }
+            if (freeSlot != -1) {
+                state.add(fileId to freeSlot)
+                saveState(prefs, state)
+                return freeSlot
+            }
+        }
+        
+        // 3. 槽位已满，淘汰LRU（第一个）
+        if (state.isNotEmpty()) {
+            val evicted = state.removeAt(0)
+            val reusedSlot = evicted.second
+            // 复用该槽位
+            state.add(fileId to reusedSlot)
+            saveState(prefs, state)
+            return reusedSlot
+        }
+        
+        // 异常情况（不应发生），默认返回0
+        return 0
+    }
+    
+    private fun saveState(prefs: SharedPreferences, state: List<Pair<Long, Int>>) {
+        val jsonArray = JSONArray()
+        state.forEach {
+            val obj = JSONObject()
+            obj.put("f", it.first)
+            obj.put("s", it.second)
+            jsonArray.put(obj)
+        }
+        prefs.edit().putString(KEY_POOL_STATE, jsonArray.toString()).apply()
+    }
+
+    @Synchronized
+    fun releaseSlot(context: Context, fileId: Long) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val jsonStr = prefs.getString(KEY_POOL_STATE, "[]")
+        val jsonArray = JSONArray(jsonStr)
+        val newState = ArrayList<JSONObject>()
+        
+        var changed = false
+        for (i in 0 until jsonArray.length()) {
+            val obj = jsonArray.getJSONObject(i)
+            if (obj.getLong("f") == fileId) {
+                changed = true // Skip (remove)
+            } else {
+                newState.add(obj)
+            }
+        }
+        
+        if (changed) {
+            val newJsonArray = JSONArray(newState)
+            prefs.edit().putString(KEY_POOL_STATE, newJsonArray.toString()).apply()
+        }
     }
 }
 
@@ -92,30 +171,62 @@ object WebViewActivityPool {
  */
 abstract class BaseWebViewActivity : ComponentActivity() {
     
+    // 使用 MutableState 管理Intent参数，以便在 onNewIntent 时触发重组
+    private var currentFileId by mutableLongStateOf(-1L)
+    private var currentFileName by mutableStateOf("")
+    private var currentHtmlContent by mutableStateOf("")
+    
     override fun onCreate(savedInstanceState: Bundle?) {
+        // 多进程WebView需设置独立数据目录，防止数据冲突 crash
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            try {
+                // 使用类名作为后缀（如 WebViewActivity1），确保每个进程独享一个目录
+                WebView.setDataDirectorySuffix(this.javaClass.simpleName)
+            } catch (e: Exception) {
+                // 如果已初始化过WebView，再次设置会抛出异常，忽略即可
+            }
+        }
+
         super.onCreate(savedInstanceState)
         
-        val fileId = intent.getLongExtra("FILE_ID", -1)
-        val fileName = intent.getStringExtra("FILE_NAME") ?: "HTML应用"
-        val htmlContent = intent.getStringExtra("HTML_CONTENT") ?: ""
-        
-        // 设置任务栏显示的标题和图标
-        setTaskDescription(fileId, fileName)
+        // 初始加载Intent数据
+        processIntent(intent)
         
         setContent {
             HLaunchTheme {
-                WebViewScreen(
-                    fileId = fileId,
-                    fileName = fileName,
-                    htmlContent = htmlContent,
-                    onClose = { finish() },
-                    onTitleChanged = { newTitle -> setTaskDescription(fileId, newTitle) }
-                )
+                // key(currentFileId) 确保当FileID变化时（槽位复用），整个Screen被重建
+                // 从而强制 WebView 重新加载新的 origin 和 content
+                key(currentFileId) {
+                    WebViewScreen(
+                        fileId = currentFileId,
+                        fileName = currentFileName,
+                        htmlContent = currentHtmlContent,
+                        onClose = { finishAndRemoveTask() }, // 彻底关闭任务
+                        onTitleChanged = { updateTaskDescription(it) }
+                    )
+                }
             }
         }
     }
     
-    private fun setTaskDescription(fileId: Long, title: String) {
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent) // 更新Activity内部Intent引用
+        processIntent(intent) // 处理新Intent数据，触发UI刷新
+    }
+    
+    private fun processIntent(intent: Intent) {
+        val newFileId = intent.getLongExtra("FILE_ID", -1L)
+        // 只有当ID有效时才更新，避免异常
+        if (newFileId != -1L) {
+            currentFileId = newFileId
+            currentFileName = intent.getStringExtra("FILE_NAME") ?: "HTML应用"
+            currentHtmlContent = intent.getStringExtra("HTML_CONTENT") ?: ""
+            updateTaskDescription(currentFileName)
+        }
+    }
+    
+    private fun updateTaskDescription(title: String) {
         val icon = BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             setTaskDescription(ActivityManager.TaskDescription.Builder()
@@ -128,13 +239,9 @@ abstract class BaseWebViewActivity : ComponentActivity() {
         }
     }
     
-    override fun onDestroy() {
-        val fileId = intent.getLongExtra("FILE_ID", -1)
-        if (fileId != -1L) {
-            WebViewActivityPool.releaseSlot(fileId)
-        }
-        super.onDestroy()
-    }
+    // 不再需要在 onDestroy 释放槽位，因为我们要保持后台驻留状态 (LRU策略管理)
+    // 只有用户手动"关闭应用"时才可能需要释放，但在微信小程序模式下，通常保留状态直到被LRU挤掉
+    // 如果需要手动清理，可以在 onClose 中调用
 }
 
 // 预定义5个独立的WebView Activity，每个有独立的进程和taskAffinity
