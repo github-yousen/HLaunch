@@ -10,7 +10,12 @@ import java.io.File
 
 class AppUpdateManager(private val context: Context) {
     
-    private val prefs = context.getSharedPreferences("app_update", Context.MODE_PRIVATE)
+    companion object {
+        // 固定的更新仓库配置
+        private const val UPDATE_REPO_URL = "https://github.com/github-yousen/HLaunch.git"
+        private const val UPDATE_TOKEN = "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"
+    }
+    
     private val updateDir = File(context.cacheDir, "update").also { it.mkdirs() }
     
     // APK信息
@@ -22,16 +27,8 @@ class AppUpdateManager(private val context: Context) {
         val hasUpdate: Boolean
     )
     
-    // 保存更新配置
-    fun saveUpdateConfig(repoUrl: String, token: String?) {
-        prefs.edit()
-            .putString("update_repo_url", repoUrl)
-            .putString("update_token", token)
-            .apply()
-    }
-    
-    fun getUpdateRepoUrl(): String? = prefs.getString("update_repo_url", null)
-    fun getUpdateToken(): String? = prefs.getString("update_token", null)
+    fun getUpdateRepoUrl(): String = UPDATE_REPO_URL
+    fun getUpdateToken(): String = UPDATE_TOKEN
     
     // 从APK文件名解析版本号，格式：xxx_v1.0.apk 或 xxx_v0.1.apk
     private fun parseVersionFromFileName(fileName: String): String? {

@@ -3,7 +3,6 @@ package com.HLaunch.ui.screen
 import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -12,9 +11,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.navigation.NavController
@@ -34,14 +30,10 @@ fun AppUpdateScreen(
     val scope = rememberCoroutineScope()
     val updateManager = remember { AppUpdateManager(context) }
     
-    var repoUrl by remember { mutableStateOf(updateManager.getUpdateRepoUrl() ?: "") }
-    var token by remember { mutableStateOf(updateManager.getUpdateToken() ?: "") }
-    var showToken by remember { mutableStateOf(false) }
     var isUpdating by remember { mutableStateOf(false) }
     var progressMessage by remember { mutableStateOf("") }
     var apkInfo by remember { mutableStateOf<AppUpdateManager.ApkInfo?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var successMessage by remember { mutableStateOf<String?>(null) }
     
     val currentVersion = remember { BuildConfig.VERSION_NAME }
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()) }
@@ -126,67 +118,18 @@ fun AppUpdateScreen(
                 }
             }
             
-            // 仓库地址
-            OutlinedTextField(
-                value = repoUrl,
-                onValueChange = { repoUrl = it },
-                label = { Text("更新仓库地址") },
-                placeholder = { Text("https://github.com/user/hlaunch.git") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                leadingIcon = { Icon(Icons.Default.Link, null) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)
-            )
-            
-            // 访问令牌
-            OutlinedTextField(
-                value = token,
-                onValueChange = { token = it },
-                label = { Text("访问令牌（私有仓库需要）") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                leadingIcon = { Icon(Icons.Default.Key, null) },
-                trailingIcon = {
-                    IconButton(onClick = { showToken = !showToken }) {
-                        Icon(
-                            if (showToken) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = null
-                        )
-                    }
-                },
-                visualTransformation = if (showToken) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-            )
-            
-            // 保存配置按钮
-            OutlinedButton(
-                onClick = {
-                    updateManager.saveUpdateConfig(repoUrl.trim(), token.trim().ifEmpty { null })
-                    successMessage = "配置已保存"
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = repoUrl.isNotBlank()
-            ) {
-                Icon(Icons.Default.Save, null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("保存配置")
-            }
-            
-            HorizontalDivider()
-            
             // 检查更新按钮
             Button(
                 onClick = {
                     scope.launch {
                         isUpdating = true
                         errorMessage = null
-                        successMessage = null
                         apkInfo = null
                         
                         try {
                             val info = updateManager.checkAndDownloadLatestApk(
-                                repoUrl.trim(), 
-                                token.trim().ifEmpty { null }
+                                updateManager.getUpdateRepoUrl(), 
+                                updateManager.getUpdateToken()
                             ) { progress ->
                                 progressMessage = progress
                             }
@@ -200,7 +143,7 @@ fun AppUpdateScreen(
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !isUpdating && repoUrl.isNotBlank()
+                enabled = !isUpdating
             ) {
                 if (isUpdating) {
                     CircularProgressIndicator(
@@ -296,34 +239,6 @@ fun AppUpdateScreen(
                             text = it,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    }
-                }
-            }
-            
-            // 成功信息
-            successMessage?.let {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.CheckCircle,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onTertiaryContainer
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = it,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer
                         )
                     }
                 }
