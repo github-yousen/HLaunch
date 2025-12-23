@@ -195,7 +195,18 @@ fun AppUpdateScreen(
                         )
                         
                         Text(
-                            text = "更新时间: ${dateFormat.format(Date(info.lastModified))}",
+                            text = "提交时间: ${dateFormat.format(Date(info.commitTime))}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        
+                        // 更新说明
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                        Text(
+                            text = "更新说明:",
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                        Text(
+                            text = info.commitMessage,
                             style = MaterialTheme.typography.bodySmall
                         )
                         

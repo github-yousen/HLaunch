@@ -35,15 +35,19 @@
         <!-- 独立WebView Activity，作为独立应用在后台运行 -->
         <activity
                 android:name=".WebViewActivity"
-                android:exported="false"
+                android:exported="true"
                 android:label="HTML应用"
+                android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="standard"
+                android:launchMode="singleInstance"
                 android:documentLaunchMode="always"
                 android:autoRemoveFromRecents="false"
                 android:persistableMode="persistAcrossReboots"
+                android:excludeFromRecents="false"
+                android:resizeableActivity="true"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.HLaunch.htmlapp" />
+                android:taskAffinity="com.HLaunch.webapp"
+                android:process=":webapp" />
         
         <provider
             android:name="androidx.core.content.FileProvider"

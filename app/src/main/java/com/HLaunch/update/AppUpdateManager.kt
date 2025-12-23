@@ -27,7 +27,9 @@ class AppUpdateManager(private val context: Context) {
         val fileName: String,
         val lastModified: Long,
         val remoteVersion: String,
-        val hasUpdate: Boolean
+        val hasUpdate: Boolean,
+        val commitMessage: String,
+        val commitTime: Long
     )
     
     fun getUpdateRepoUrl(): String = UPDATE_REPO_URL
@@ -55,6 +57,7 @@ class AppUpdateManager(private val context: Context) {
     // 检查并下载最新APK
     suspend fun checkAndDownloadLatestApk(repoUrl: String, token: String?, onProgress: (String) -> Unit): ApkInfo? = withContext(Dispatchers.IO) {
         val repoDir = File(updateDir, "update_repo")
+        var git: Git? = null
         
         try {
             onProgress("正在克隆仓库...")
@@ -68,7 +71,6 @@ class AppUpdateManager(private val context: Context) {
             val cloneCommand = Git.cloneRepository()
                 .setURI(repoUrl)
                 .setDirectory(repoDir)
-                .setDepth(1)
             
             if (!token.isNullOrEmpty()) {
                 cloneCommand.setCredentialsProvider(
@@ -76,7 +78,7 @@ class AppUpdateManager(private val context: Context) {
                 )
             }
             
-            cloneCommand.call().close()
+            git = cloneCommand.call()
             
             onProgress("正在查找APK文件...")
             
@@ -103,6 +105,18 @@ class AppUpdateManager(private val context: Context) {
             val currentVersion = BuildConfig.VERSION_NAME
             val hasUpdate = compareVersions(remoteVersion, currentVersion) > 0
             
+            onProgress("正在获取更新信息...")
+            
+            // 获取该APK文件对应的commit信息
+            val apkRelativePath = "version/${latestApk.name}"
+            val logCommand = git.log()
+                .addPath(apkRelativePath)
+                .setMaxCount(1)
+            val commits = logCommand.call()
+            val latestCommit = commits.firstOrNull()
+            val commitMessage = latestCommit?.fullMessage?.trim() ?: "无更新说明"
+            val commitTime = latestCommit?.commitTime?.toLong()?.times(1000) ?: latestApk.lastModified()
+            
             onProgress("正在复制APK文件...")
             
             // 复制到缓存目录
@@ -117,12 +131,15 @@ class AppUpdateManager(private val context: Context) {
                 fileName = latestApk.name,
                 lastModified = latestApk.lastModified(),
                 remoteVersion = remoteVersion,
-                hasUpdate = hasUpdate
+                hasUpdate = hasUpdate,
+                commitMessage = commitMessage,
+                commitTime = commitTime
             )
         } catch (e: Exception) {
             e.printStackTrace()
             throw e
         } finally {
+            git?.close()
             // 清理临时仓库目录
             repoDir.deleteRecursively()
         }
