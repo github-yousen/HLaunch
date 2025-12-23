@@ -11,8 +11,8 @@ import java.io.File
 class AppUpdateManager(private val context: Context) {
     
     companion object {
-        // 固定的更新仓库配置
-        private const val UPDATE_REPO_URL = "https://github.com/github-yousen/HLaunch.git"
+        // 固定的更新仓库配置（使用ghproxy镜像加速，适合中国网络环境）
+        private const val UPDATE_REPO_URL = "https://ghproxy.com/https://github.com/github-yousen/HLaunch.git"
         private const val UPDATE_TOKEN = "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"
     }
     
