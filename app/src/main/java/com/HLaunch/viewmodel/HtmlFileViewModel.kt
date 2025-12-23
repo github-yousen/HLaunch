@@ -27,32 +27,6 @@ class HtmlFileViewModel(application: Application) : AndroidViewModel(application
     private val _runningTasks = MutableStateFlow<List<RunningTask>>(emptyList())
     val runningTasks: StateFlow<List<RunningTask>> = _runningTasks.asStateFlow()
     
-    init {
-        // 初始化时从持久化的池状态恢复运行任务列表
-        viewModelScope.launch {
-            syncRunningTasksFromPool()
-        }
-    }
-
-    /**
-     * 从 WebViewActivityPool 的持久化状态同步任务列表
-     */
-    fun syncRunningTasksFromPool() {
-        val context = getApplication<Application>()
-        val runningIds = com.HLaunch.WebViewActivityPool.getRunningFileIds(context)
-        
-        viewModelScope.launch {
-            val tasks = mutableListOf<RunningTask>()
-            runningIds.forEach { id ->
-                val file = repository.getFileById(id)
-                if (file != null) {
-                    tasks.add(RunningTask(htmlFileId = file.id, htmlFileName = file.name))
-                }
-            }
-            _runningTasks.value = tasks
-        }
-    }
-    
     // 当前激活的任务
     private val _activeTask = MutableStateFlow<RunningTask?>(null)
     val activeTask: StateFlow<RunningTask?> = _activeTask.asStateFlow()

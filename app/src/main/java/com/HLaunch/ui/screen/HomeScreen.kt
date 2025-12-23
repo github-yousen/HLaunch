@@ -112,9 +112,7 @@ fun HomeScreen(
                         file = file,
                         onClick = { navController.navigate(Screen.EditFile.createRoute(file.id)) },
                         onRun = {
-                            // 1. 更新 ViewModel 状态
-                            fileViewModel.runFile(file)
-                            // 2. 使用Activity池启动独立WebViewActivity
+                            // 使用Activity池启动独立WebViewActivity
                             WebViewActivityPool.launchWebView(context, file.id, file.name, file.content)
                         },
                         onEdit = { navController.navigate(Screen.EditFile.createRoute(file.id)) },
@@ -136,9 +134,7 @@ fun HomeScreen(
                         file = file,
                         onClick = { navController.navigate(Screen.EditFile.createRoute(file.id)) },
                         onRun = {
-                            // 1. 更新 ViewModel 状态
-                            fileViewModel.runFile(file)
-                            // 2. 使用Activity池启动独立WebViewActivity
+                            // 使用Activity池启动独立WebViewActivity
                             WebViewActivityPool.launchWebView(context, file.id, file.name, file.content)
                         },
                         onEdit = { navController.navigate(Screen.EditFile.createRoute(file.id)) },
