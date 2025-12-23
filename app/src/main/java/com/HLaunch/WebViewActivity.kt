@@ -63,11 +63,29 @@ object WebViewActivityPool {
             
             // 关键：NEW_DOCUMENT 告诉系统这是一个独立的文档/任务
             // MULTIPLE_TASK 确保即使 Activity 类相同，也创建新任务而非复用旧任务
+            // RETAIN_IN_RECENTS 确保任务在后台不被轻易移除
             addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT)
             addFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                addFlags(Intent.FLAG_ACTIVITY_RETAIN_IN_RECENTS)
+            }
         }
         context.startActivity(intent)
+    }
+
+    /**
+     * 获取当前所有已分配的运行任务ID
+     */
+    fun getRunningFileIds(context: Context): List<Long> {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val jsonStr = prefs.getString(KEY_POOL_STATE, "[]")
+        val jsonArray = JSONArray(jsonStr)
+        val ids = mutableListOf<Long>()
+        for (i in 0 until jsonArray.length()) {
+            ids.add(jsonArray.getJSONObject(i).getLong("f"))
+        }
+        return ids
     }
 
     /**
