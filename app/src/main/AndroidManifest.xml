@@ -36,7 +36,7 @@
         <activity
                 android:name=".WebViewActivity"
                 android:exported="true"
-                android:label="HTML应用"
+                android:label="HTML应用0"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
                 android:launchMode="standard"
@@ -44,6 +44,7 @@
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
                 android:persistableMode="persistAcrossReboots"
+                android:resizeableActivity="true"
                 android:configChanges="orientation|screenSize|keyboardHidden"
                 android:taskAffinity="com.HLaunch.webapp0"
                 android:process=":webapp0" />
@@ -51,7 +52,7 @@
         <activity
                 android:name=".WebViewActivity1"
                 android:exported="true"
-                android:label="HTML应用"
+                android:label="HTML应用1"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
                 android:launchMode="standard"
@@ -59,6 +60,7 @@
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
                 android:persistableMode="persistAcrossReboots"
+                android:resizeableActivity="true"
                 android:configChanges="orientation|screenSize|keyboardHidden"
                 android:taskAffinity="com.HLaunch.webapp1"
                 android:process=":webapp1" />
@@ -66,7 +68,7 @@
         <activity
                 android:name=".WebViewActivity2"
                 android:exported="true"
-                android:label="HTML应用"
+                android:label="HTML应用2"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
                 android:launchMode="standard"
@@ -74,6 +76,7 @@
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
                 android:persistableMode="persistAcrossReboots"
+                android:resizeableActivity="true"
                 android:configChanges="orientation|screenSize|keyboardHidden"
                 android:taskAffinity="com.HLaunch.webapp2"
                 android:process=":webapp2" />
@@ -81,7 +84,7 @@
         <activity
                 android:name=".WebViewActivity3"
                 android:exported="true"
-                android:label="HTML应用"
+                android:label="HTML应用3"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
                 android:launchMode="standard"
@@ -89,6 +92,7 @@
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
                 android:persistableMode="persistAcrossReboots"
+                android:resizeableActivity="true"
                 android:configChanges="orientation|screenSize|keyboardHidden"
                 android:taskAffinity="com.HLaunch.webapp3"
                 android:process=":webapp3" />
@@ -96,7 +100,7 @@
         <activity
                 android:name=".WebViewActivity4"
                 android:exported="true"
-                android:label="HTML应用"
+                android:label="HTML应用4"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
                 android:launchMode="standard"
@@ -104,6 +108,7 @@
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
                 android:persistableMode="persistAcrossReboots"
+                android:resizeableActivity="true"
                 android:configChanges="orientation|screenSize|keyboardHidden"
                 android:taskAffinity="com.HLaunch.webapp4"
                 android:process=":webapp4" />
@@ -111,7 +116,7 @@
         <activity
                 android:name=".WebViewActivity5"
                 android:exported="true"
-                android:label="HTML应用"
+                android:label="HTML应用5"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
                 android:launchMode="standard"
@@ -119,6 +124,7 @@
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
                 android:persistableMode="persistAcrossReboots"
+                android:resizeableActivity="true"
                 android:configChanges="orientation|screenSize|keyboardHidden"
                 android:taskAffinity="com.HLaunch.webapp5"
                 android:process=":webapp5" />
