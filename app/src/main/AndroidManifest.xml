@@ -32,132 +32,132 @@
             </intent-filter>
         </activity>
         
-        <!-- 独立WebView Activity池，使用Shortcut实现独立任务显示（vivo OriginOS兼容） -->
+        <!-- 独立WebView Activity池，使用activity-alias模拟独立应用（vivo OriginOS兼容） -->
         <activity
                 android:name=".WebViewActivity"
-                android:exported="true"
-                android:label="HTML应用0"
-                android:icon="@mipmap/ic_launcher"
+                android:exported="false"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="standard"
-                android:documentLaunchMode="always"
+                android:launchMode="singleInstance"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
-                android:persistableMode="persistAcrossReboots"
-                android:resizeableActivity="true"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.HLaunch.webapp0">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-            </intent-filter>
-        </activity>
+                android:taskAffinity=".webapp0" />
         
         <activity
                 android:name=".WebViewActivity1"
-                android:exported="true"
-                android:label="HTML应用1"
-                android:icon="@mipmap/ic_launcher"
+                android:exported="false"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="standard"
-                android:documentLaunchMode="always"
+                android:launchMode="singleInstance"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
-                android:persistableMode="persistAcrossReboots"
-                android:resizeableActivity="true"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.HLaunch.webapp1">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-            </intent-filter>
-        </activity>
+                android:taskAffinity=".webapp1" />
         
         <activity
                 android:name=".WebViewActivity2"
-                android:exported="true"
-                android:label="HTML应用2"
-                android:icon="@mipmap/ic_launcher"
+                android:exported="false"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="standard"
-                android:documentLaunchMode="always"
+                android:launchMode="singleInstance"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
-                android:persistableMode="persistAcrossReboots"
-                android:resizeableActivity="true"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.HLaunch.webapp2">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-            </intent-filter>
-        </activity>
+                android:taskAffinity=".webapp2" />
         
         <activity
                 android:name=".WebViewActivity3"
-                android:exported="true"
-                android:label="HTML应用3"
-                android:icon="@mipmap/ic_launcher"
+                android:exported="false"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="standard"
-                android:documentLaunchMode="always"
+                android:launchMode="singleInstance"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
-                android:persistableMode="persistAcrossReboots"
-                android:resizeableActivity="true"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.HLaunch.webapp3">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-            </intent-filter>
-        </activity>
+                android:taskAffinity=".webapp3" />
         
         <activity
                 android:name=".WebViewActivity4"
-                android:exported="true"
-                android:label="HTML应用4"
-                android:icon="@mipmap/ic_launcher"
+                android:exported="false"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="standard"
-                android:documentLaunchMode="always"
+                android:launchMode="singleInstance"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
-                android:persistableMode="persistAcrossReboots"
-                android:resizeableActivity="true"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.HLaunch.webapp4">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-            </intent-filter>
-        </activity>
+                android:taskAffinity=".webapp4" />
         
         <activity
                 android:name=".WebViewActivity5"
-                android:exported="true"
-                android:label="HTML应用5"
-                android:icon="@mipmap/ic_launcher"
+                android:exported="false"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="standard"
-                android:documentLaunchMode="always"
+                android:launchMode="singleInstance"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
-                android:persistableMode="persistAcrossReboots"
-                android:resizeableActivity="true"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.HLaunch.webapp5">
+                android:taskAffinity=".webapp5" />
+        
+        <!-- Activity别名，作为独立应用入口 -->
+        <activity-alias
+                android:name=".WebApp1"
+                android:targetActivity=".WebViewActivity1"
+                android:exported="true"
+                android:label="Web应用1"
+                android:icon="@mipmap/ic_launcher"
+                android:taskAffinity=".webapp1">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
-                <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
-        </activity>
+        </activity-alias>
+        
+        <activity-alias
+                android:name=".WebApp2"
+                android:targetActivity=".WebViewActivity2"
+                android:exported="true"
+                android:label="Web应用2"
+                android:icon="@mipmap/ic_launcher"
+                android:taskAffinity=".webapp2">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </activity-alias>
+        
+        <activity-alias
+                android:name=".WebApp3"
+                android:targetActivity=".WebViewActivity3"
+                android:exported="true"
+                android:label="Web应用3"
+                android:icon="@mipmap/ic_launcher"
+                android:taskAffinity=".webapp3">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </activity-alias>
+        
+        <activity-alias
+                android:name=".WebApp4"
+                android:targetActivity=".WebViewActivity4"
+                android:exported="true"
+                android:label="Web应用4"
+                android:icon="@mipmap/ic_launcher"
+                android:taskAffinity=".webapp4">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </activity-alias>
+        
+        <activity-alias
+                android:name=".WebApp5"
+                android:targetActivity=".WebViewActivity5"
+                android:exported="true"
+                android:label="Web应用5"
+                android:icon="@mipmap/ic_launcher"
+                android:taskAffinity=".webapp5">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </activity-alias>
         
         <provider
             android:name="androidx.core.content.FileProvider"
