@@ -38,60 +38,66 @@
                 android:exported="false"
                 android:theme="@style/Theme.HLaunch"
                 android:launchMode="singleInstance"
+                android:process=":web0"
+                android:taskAffinity="com.HLaunch.webapp0"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
-                android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity=".webapp0" />
+                android:configChanges="orientation|screenSize|keyboardHidden" />
         
         <activity
                 android:name=".WebViewActivity1"
                 android:exported="false"
                 android:theme="@style/Theme.HLaunch"
                 android:launchMode="singleInstance"
+                android:process=":web1"
+                android:taskAffinity="com.HLaunch.webapp1"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
-                android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity=".webapp1" />
+                android:configChanges="orientation|screenSize|keyboardHidden" />
         
         <activity
                 android:name=".WebViewActivity2"
                 android:exported="false"
                 android:theme="@style/Theme.HLaunch"
                 android:launchMode="singleInstance"
+                android:process=":web2"
+                android:taskAffinity="com.HLaunch.webapp2"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
-                android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity=".webapp2" />
+                android:configChanges="orientation|screenSize|keyboardHidden" />
         
         <activity
                 android:name=".WebViewActivity3"
                 android:exported="false"
                 android:theme="@style/Theme.HLaunch"
                 android:launchMode="singleInstance"
+                android:process=":web3"
+                android:taskAffinity="com.HLaunch.webapp3"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
-                android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity=".webapp3" />
+                android:configChanges="orientation|screenSize|keyboardHidden" />
         
         <activity
                 android:name=".WebViewActivity4"
                 android:exported="false"
                 android:theme="@style/Theme.HLaunch"
                 android:launchMode="singleInstance"
+                android:process=":web4"
+                android:taskAffinity="com.HLaunch.webapp4"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
-                android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity=".webapp4" />
+                android:configChanges="orientation|screenSize|keyboardHidden" />
         
         <activity
                 android:name=".WebViewActivity5"
                 android:exported="false"
                 android:theme="@style/Theme.HLaunch"
                 android:launchMode="singleInstance"
+                android:process=":web5"
+                android:taskAffinity="com.HLaunch.webapp5"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
-                android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity=".webapp5" />
+                android:configChanges="orientation|screenSize|keyboardHidden" />
         
         <!-- Activity别名，作为独立应用入口 -->
         <activity-alias
@@ -100,7 +106,7 @@
                 android:exported="true"
                 android:label="Web应用1"
                 android:icon="@mipmap/ic_launcher"
-                android:taskAffinity=".webapp1">
+                android:taskAffinity="com.HLaunch.webapp1">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.DEFAULT"/>
@@ -126,7 +132,7 @@
                 android:exported="true"
                 android:label="Web应用3"
                 android:icon="@mipmap/ic_launcher"
-                android:taskAffinity=".webapp3">
+                android:taskAffinity="com.HLaunch.webapp3">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.DEFAULT"/>
@@ -152,7 +158,7 @@
                 android:exported="true"
                 android:label="Web应用5"
                 android:icon="@mipmap/ic_launcher"
-                android:taskAffinity=".webapp5">
+                android:taskAffinity="com.HLaunch.webapp5">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.DEFAULT"/>
