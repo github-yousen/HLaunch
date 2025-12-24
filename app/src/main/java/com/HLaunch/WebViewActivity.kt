@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.HLaunch.ui.theme.HLaunchTheme
+import com.HLaunch.util.DevLogger
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -34,6 +35,7 @@ import org.json.JSONObject
  * 使用 LRU 策略和持久化存储来管理 Slot 分配
  */
 object WebViewActivityPool {
+    private const val TAG = "WebViewPool"
     private const val PREFS_NAME = "webview_pool_prefs"
     private const val KEY_POOL_STATE = "pool_state"
     private const val MAX_SLOTS = 5
@@ -53,8 +55,13 @@ object WebViewActivityPool {
      * 使用 documentLaunchMode="always" + FLAG_ACTIVITY_NEW_DOCUMENT 确保独立任务（vivo OriginOS兼容）
      */
     fun launchWebView(context: Context, fileId: Long, fileName: String, htmlContent: String) {
+        DevLogger.i(TAG, "========== 启动WebView开始 ==========")
+        DevLogger.i(TAG, "fileId=$fileId, fileName=$fileName, contentLen=${htmlContent.length}")
+        
         val slotIndex = allocateSlot(context, fileId)
         val activityClass = activitySlots[slotIndex]
+        
+        DevLogger.i(TAG, "分配槽位: slotIndex=$slotIndex, activityClass=${activityClass.simpleName}")
         
         val intent = Intent(context, activityClass).apply {
             putExtra("FILE_ID", fileId)
@@ -67,7 +74,16 @@ object WebViewActivityPool {
             addFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
             addFlags(Intent.FLAG_ACTIVITY_RETAIN_IN_RECENTS)
         }
+        
+        val flags = intent.flags
+        DevLogger.i(TAG, "Intent Flags: 0x${Integer.toHexString(flags)}")
+        DevLogger.i(TAG, "  NEW_TASK=${(flags and Intent.FLAG_ACTIVITY_NEW_TASK) != 0}")
+        DevLogger.i(TAG, "  NEW_DOCUMENT=${(flags and Intent.FLAG_ACTIVITY_NEW_DOCUMENT) != 0}")
+        DevLogger.i(TAG, "  MULTIPLE_TASK=${(flags and Intent.FLAG_ACTIVITY_MULTIPLE_TASK) != 0}")
+        DevLogger.i(TAG, "  RETAIN_IN_RECENTS=${(flags and Intent.FLAG_ACTIVITY_RETAIN_IN_RECENTS) != 0}")
+        
         context.startActivity(intent)
+        DevLogger.i(TAG, "========== 启动WebView完成 ==========")
     }
 
     /**
@@ -78,9 +94,13 @@ object WebViewActivityPool {
      */
     @Synchronized
     private fun allocateSlot(context: Context, fileId: Long): Int {
+        DevLogger.d(TAG, "allocateSlot: fileId=$fileId")
+        
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val jsonStr = prefs.getString(KEY_POOL_STATE, "[]")
         val jsonArray = JSONArray(jsonStr)
+        
+        DevLogger.d(TAG, "当前池状态: $jsonStr")
         
         // 解析当前状态: List<Pair<FileId, SlotIndex>>，列表顺序即为LRU顺序（末尾为MRU）
         val state = ArrayList<Pair<Long, Int>>()
@@ -94,6 +114,8 @@ object WebViewActivityPool {
             usedSlots.add(sid)
         }
         
+        DevLogger.d(TAG, "已使用槽位: $usedSlots")
+        
         // 1. 查找是否已存在
         val existingIndex = state.indexOfFirst { it.first == fileId }
         if (existingIndex != -1) {
@@ -101,6 +123,7 @@ object WebViewActivityPool {
             val item = state.removeAt(existingIndex)
             state.add(item)
             saveState(prefs, state)
+            DevLogger.i(TAG, "命中已有槽位: slotIndex=${item.second}")
             return item.second
         }
         
@@ -116,6 +139,7 @@ object WebViewActivityPool {
             if (freeSlot != -1) {
                 state.add(fileId to freeSlot)
                 saveState(prefs, state)
+                DevLogger.i(TAG, "分配空闲槽位: slotIndex=$freeSlot")
                 return freeSlot
             }
         }
@@ -124,6 +148,7 @@ object WebViewActivityPool {
         if (state.isNotEmpty()) {
             val evicted = state.removeAt(0)
             val reusedSlot = evicted.second
+            DevLogger.w(TAG, "槽位已满，淘汰LRU: evictedFileId=${evicted.first}, reusedSlot=$reusedSlot")
             // 复用该槽位
             state.add(fileId to reusedSlot)
             saveState(prefs, state)
@@ -131,6 +156,7 @@ object WebViewActivityPool {
         }
         
         // 异常情况（不应发生），默认返回0
+        DevLogger.e(TAG, "异常：无法分配槽位，返回默认0")
         return 0
     }
     
@@ -143,6 +169,7 @@ object WebViewActivityPool {
             jsonArray.put(obj)
         }
         prefs.edit().putString(KEY_POOL_STATE, jsonArray.toString()).apply()
+        DevLogger.d(TAG, "保存池状态: $jsonArray")
     }
 
     @Synchronized
@@ -157,6 +184,7 @@ object WebViewActivityPool {
             val obj = jsonArray.getJSONObject(i)
             if (obj.getLong("f") == fileId) {
                 changed = true // Skip (remove)
+                DevLogger.i(TAG, "释放槽位: fileId=$fileId")
             } else {
                 newState.add(obj)
             }
@@ -173,6 +201,7 @@ object WebViewActivityPool {
  * 基础WebView Activity，包含所有WebView逻辑
  */
 abstract class BaseWebViewActivity : ComponentActivity() {
+    private val TAG = "WebViewActivity"
     
     // 使用 MutableState 管理Intent参数，以便在 onNewIntent 时触发重组
     private var currentFileId by mutableLongStateOf(-1L)
@@ -180,13 +209,20 @@ abstract class BaseWebViewActivity : ComponentActivity() {
     private var currentHtmlContent by mutableStateOf("")
     
     override fun onCreate(savedInstanceState: Bundle?) {
+        val activityName = this.javaClass.simpleName
+        DevLogger.i(TAG, "[$activityName] onCreate 开始")
+        DevLogger.i(TAG, "[$activityName] taskId=${taskId}, isTaskRoot=$isTaskRoot")
+        DevLogger.i(TAG, "[$activityName] processId=${android.os.Process.myPid()}")
+        
         // 多进程WebView需设置独立数据目录，防止数据冲突 crash
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             try {
                 // 使用类名作为后缀（如 WebViewActivity1），确保每个进程独享一个目录
-                WebView.setDataDirectorySuffix(this.javaClass.simpleName)
+                WebView.setDataDirectorySuffix(activityName)
+                DevLogger.d(TAG, "[$activityName] WebView数据目录设置成功: $activityName")
             } catch (e: Exception) {
                 // 如果已初始化过WebView，再次设置会抛出异常，忽略即可
+                DevLogger.w(TAG, "[$activityName] WebView数据目录已设置: ${e.message}")
             }
         }
 
@@ -204,32 +240,73 @@ abstract class BaseWebViewActivity : ComponentActivity() {
                         fileId = currentFileId,
                         fileName = currentFileName,
                         htmlContent = currentHtmlContent,
-                        onClose = { finishAndRemoveTask() }, // 彻底关闭任务
+                        onClose = { 
+                            DevLogger.i(TAG, "[$activityName] 用户关闭任务")
+                            finishAndRemoveTask() 
+                        },
                         onTitleChanged = { updateTaskDescription(it) }
                     )
                 }
             }
         }
+        
+        DevLogger.i(TAG, "[$activityName] onCreate 完成")
     }
     
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        val activityName = this.javaClass.simpleName
+        DevLogger.i(TAG, "[$activityName] onNewIntent 收到新Intent")
         setIntent(intent) // 更新Activity内部Intent引用
         processIntent(intent) // 处理新Intent数据，触发UI刷新
     }
     
+    override fun onStart() {
+        super.onStart()
+        DevLogger.d(TAG, "[${this.javaClass.simpleName}] onStart")
+    }
+    
+    override fun onResume() {
+        super.onResume()
+        DevLogger.d(TAG, "[${this.javaClass.simpleName}] onResume, taskId=$taskId")
+    }
+    
+    override fun onPause() {
+        super.onPause()
+        DevLogger.d(TAG, "[${this.javaClass.simpleName}] onPause")
+    }
+    
+    override fun onStop() {
+        super.onStop()
+        DevLogger.d(TAG, "[${this.javaClass.simpleName}] onStop")
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        DevLogger.i(TAG, "[${this.javaClass.simpleName}] onDestroy, taskId=$taskId")
+    }
+    
     private fun processIntent(intent: Intent) {
+        val activityName = this.javaClass.simpleName
         val newFileId = intent.getLongExtra("FILE_ID", -1L)
+        DevLogger.d(TAG, "[$activityName] processIntent: fileId=$newFileId")
+        
         // 只有当ID有效时才更新，避免异常
         if (newFileId != -1L) {
             currentFileId = newFileId
             currentFileName = intent.getStringExtra("FILE_NAME") ?: "HTML应用"
             currentHtmlContent = intent.getStringExtra("HTML_CONTENT") ?: ""
+            DevLogger.i(TAG, "[$activityName] 加载文件: id=$currentFileId, name=$currentFileName")
             updateTaskDescription(currentFileName)
+        } else {
+            DevLogger.e(TAG, "[$activityName] 无效的fileId: $newFileId")
         }
     }
     
     private fun updateTaskDescription(title: String) {
+        val activityName = this.javaClass.simpleName
+        DevLogger.d(TAG, "[$activityName] 更新任务描述: $title")
+        
         // 动态设置任务描述，让系统识别为独立任务（影响任务栏显示）
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             setTaskDescription(ActivityManager.TaskDescription.Builder()

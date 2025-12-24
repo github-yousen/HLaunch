@@ -29,6 +29,7 @@ sealed class Screen(val route: String) {
     }
     object Settings : Screen("settings")
     object AppUpdate : Screen("app_update")
+    object DevLog : Screen("dev_log")
 }
 
 @Composable
@@ -126,6 +127,12 @@ fun NavGraph(
         
         composable(Screen.AppUpdate.route) {
             AppUpdateScreen(
+                navController = navController
+            )
+        }
+        
+        composable(Screen.DevLog.route) {
+            DevLogScreen(
                 navController = navController
             )
         }

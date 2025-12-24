@@ -3,6 +3,7 @@ package com.HLaunch.ui.screen
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -10,10 +11,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.HLaunch.BuildConfig
 import com.HLaunch.ui.navigation.Screen
+import com.HLaunch.util.DevLogger
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -21,6 +25,53 @@ fun SettingsScreen(
     navController: NavController
 ) {
     val context = LocalContext.current
+    var devModeEnabled by remember { mutableStateOf(DevLogger.isDevModeEnabled(context)) }
+    var showPasswordDialog by remember { mutableStateOf(false) }
+    var versionClickCount by remember { mutableIntStateOf(0) }
+    
+    // 密码输入对话框
+    if (showPasswordDialog) {
+        var password by remember { mutableStateOf("") }
+        var error by remember { mutableStateOf(false) }
+        
+        AlertDialog(
+            onDismissRequest = { showPasswordDialog = false },
+            title = { Text("开启开发者模式") },
+            text = {
+                Column {
+                    Text("请输入开发者密码")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it; error = false },
+                        label = { Text("密码") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        isError = error,
+                        supportingText = if (error) {{ Text("密码错误") }} else null,
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (DevLogger.enableDevMode(context, password)) {
+                        devModeEnabled = true
+                        showPasswordDialog = false
+                    } else {
+                        error = true
+                    }
+                }) {
+                    Text("确定")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPasswordDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
     
     Scaffold(
         topBar = {
@@ -78,6 +129,39 @@ fun SettingsScreen(
                 )
             }
             
+            // 开发者选项（开启后显示）
+            if (devModeEnabled) {
+                item {
+                    Text(
+                        text = "开发者选项",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
+                
+                item {
+                    SettingsItem(
+                        icon = Icons.Default.BugReport,
+                        title = "查看日志",
+                        subtitle = "查看多任务调试日志",
+                        onClick = { navController.navigate(Screen.DevLog.route) }
+                    )
+                }
+                
+                item {
+                    SettingsItem(
+                        icon = Icons.Default.Close,
+                        title = "关闭开发者模式",
+                        subtitle = "关闭后隐藏开发者选项",
+                        onClick = {
+                            DevLogger.disableDevMode(context)
+                            devModeEnabled = false
+                        }
+                    )
+                }
+            }
+            
             // 关于
             item {
                 Text(
@@ -89,11 +173,21 @@ fun SettingsScreen(
             }
             
             item {
+                // 连续点击5次版本号开启开发者模式
                 SettingsItem(
                     icon = Icons.Default.Info,
                     title = "版本",
-                    subtitle = "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
-                    onClick = { }
+                    subtitle = "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})" + 
+                        if (!devModeEnabled && versionClickCount > 0) " (再点${5 - versionClickCount}次)" else "",
+                    onClick = {
+                        if (!devModeEnabled) {
+                            versionClickCount++
+                            if (versionClickCount >= 5) {
+                                showPasswordDialog = true
+                                versionClickCount = 0
+                            }
+                        }
+                    }
                 )
             }
             
