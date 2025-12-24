@@ -32,19 +32,21 @@
             </intent-filter>
         </activity>
         
-        <!-- 独立WebView Activity池，采用singleTask模式确保任务独立且持久 -->
+        <!-- 独立WebView Activity池，采用documentLaunchMode确保任务独立（vivo OriginOS兼容） -->
         <activity
                 android:name=".WebViewActivity"
                 android:exported="true"
                 android:label="HTML应用"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="singleTask"
+                android:launchMode="standard"
+                android:documentLaunchMode="always"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
+                android:persistableMode="persistAcrossReboots"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.hlaunch.webapp0.task"
-                android:process="com.hlaunch.webapp0" />
+                android:taskAffinity=""
+                android:process=":webapp0" />
         
         <activity
                 android:name=".WebViewActivity1"
@@ -52,12 +54,14 @@
                 android:label="HTML应用"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="singleTask"
+                android:launchMode="standard"
+                android:documentLaunchMode="always"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
+                android:persistableMode="persistAcrossReboots"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.hlaunch.webapp1.task"
-                android:process="com.hlaunch.webapp1" />
+                android:taskAffinity=""
+                android:process=":webapp1" />
         
         <activity
                 android:name=".WebViewActivity2"
@@ -65,12 +69,14 @@
                 android:label="HTML应用"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="singleTask"
+                android:launchMode="standard"
+                android:documentLaunchMode="always"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
+                android:persistableMode="persistAcrossReboots"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.hlaunch.webapp2.task"
-                android:process="com.hlaunch.webapp2" />
+                android:taskAffinity=""
+                android:process=":webapp2" />
         
         <activity
                 android:name=".WebViewActivity3"
@@ -78,12 +84,14 @@
                 android:label="HTML应用"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="singleTask"
+                android:launchMode="standard"
+                android:documentLaunchMode="always"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
+                android:persistableMode="persistAcrossReboots"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.hlaunch.webapp3.task"
-                android:process="com.hlaunch.webapp3" />
+                android:taskAffinity=""
+                android:process=":webapp3" />
         
         <activity
                 android:name=".WebViewActivity4"
@@ -91,12 +99,14 @@
                 android:label="HTML应用"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="singleTask"
+                android:launchMode="standard"
+                android:documentLaunchMode="always"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
+                android:persistableMode="persistAcrossReboots"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.hlaunch.webapp4.task"
-                android:process="com.hlaunch.webapp4" />
+                android:taskAffinity=""
+                android:process=":webapp4" />
         
         <activity
                 android:name=".WebViewActivity5"
@@ -104,12 +114,14 @@
                 android:label="HTML应用"
                 android:icon="@mipmap/ic_launcher"
                 android:theme="@style/Theme.HLaunch"
-                android:launchMode="singleTask"
+                android:launchMode="standard"
+                android:documentLaunchMode="always"
                 android:autoRemoveFromRecents="false"
                 android:excludeFromRecents="false"
+                android:persistableMode="persistAcrossReboots"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.hlaunch.webapp5.task"
-                android:process="com.hlaunch.webapp5" />
+                android:taskAffinity=""
+                android:process=":webapp5" />
         
         <provider
             android:name="androidx.core.content.FileProvider"

@@ -50,7 +50,7 @@ object WebViewActivityPool {
     /**
      * 启动WebView Activity
      * 自动分配或复用槽位（LRU策略）
-     * 修改：使用 singleTask + NEW_TASK 确保任务持久化存在于后台
+     * 使用 documentLaunchMode="always" + FLAG_ACTIVITY_NEW_DOCUMENT 确保独立任务（vivo OriginOS兼容）
      */
     fun launchWebView(context: Context, fileId: Long, fileName: String, htmlContent: String) {
         val slotIndex = allocateSlot(context, fileId)
@@ -61,9 +61,11 @@ object WebViewActivityPool {
             putExtra("FILE_NAME", fileName)
             putExtra("HTML_CONTENT", htmlContent)
             
-            // 使用 NEW_TASK 启动新任务（配合 taskAffinity 和 singleTask）
-            // 去除 NEW_DOCUMENT 和 MULTIPLE_TASK 以避免任务被系统过早清理
+            // 关键：FLAG_ACTIVITY_NEW_DOCUMENT + FLAG_ACTIVITY_MULTIPLE_TASK 强制创建独立任务
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT)
+            addFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+            addFlags(Intent.FLAG_ACTIVITY_RETAIN_IN_RECENTS)
         }
         context.startActivity(intent)
     }
