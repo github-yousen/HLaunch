@@ -32,7 +32,7 @@
             </intent-filter>
         </activity>
         
-        <!-- 独立WebView Activity池，采用documentLaunchMode确保任务独立（vivo OriginOS兼容） -->
+        <!-- 独立WebView Activity池，每个Activity有唯一taskAffinity确保任务独立（vivo OriginOS兼容） -->
         <activity
                 android:name=".WebViewActivity"
                 android:exported="true"
@@ -45,7 +45,7 @@
                 android:excludeFromRecents="false"
                 android:persistableMode="persistAcrossReboots"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity=""
+                android:taskAffinity="com.HLaunch.webapp0"
                 android:process=":webapp0" />
         
         <activity
@@ -60,7 +60,7 @@
                 android:excludeFromRecents="false"
                 android:persistableMode="persistAcrossReboots"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity=""
+                android:taskAffinity="com.HLaunch.webapp1"
                 android:process=":webapp1" />
         
         <activity
@@ -75,7 +75,7 @@
                 android:excludeFromRecents="false"
                 android:persistableMode="persistAcrossReboots"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity=""
+                android:taskAffinity="com.HLaunch.webapp2"
                 android:process=":webapp2" />
         
         <activity
@@ -90,7 +90,7 @@
                 android:excludeFromRecents="false"
                 android:persistableMode="persistAcrossReboots"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity=""
+                android:taskAffinity="com.HLaunch.webapp3"
                 android:process=":webapp3" />
         
         <activity
@@ -105,7 +105,7 @@
                 android:excludeFromRecents="false"
                 android:persistableMode="persistAcrossReboots"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity=""
+                android:taskAffinity="com.HLaunch.webapp4"
                 android:process=":webapp4" />
         
         <activity
@@ -120,7 +120,7 @@
                 android:excludeFromRecents="false"
                 android:persistableMode="persistAcrossReboots"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity=""
+                android:taskAffinity="com.HLaunch.webapp5"
                 android:process=":webapp5" />
         
         <provider

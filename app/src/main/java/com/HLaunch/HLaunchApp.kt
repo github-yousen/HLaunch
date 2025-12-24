@@ -4,6 +4,7 @@ import android.app.Application
 import com.HLaunch.data.database.AppDatabase
 import com.HLaunch.data.repository.GitRepoRepository
 import com.HLaunch.data.repository.HtmlFileRepository
+import com.HLaunch.util.DevLogger
 
 class HLaunchApp : Application() {
     
@@ -14,6 +15,7 @@ class HLaunchApp : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        DevLogger.init(this)  // 初始化跨进程日志
     }
     
     companion object {

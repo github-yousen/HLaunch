@@ -30,14 +30,14 @@ import kotlinx.coroutines.delay
 @Composable
 fun DevLogScreen(navController: NavController) {
     val context = LocalContext.current
-    var logs by remember { mutableStateOf(DevLogger.getLogs()) }
+    var logs by remember { mutableStateOf(DevLogger.getLogs(context)) }
     var autoRefresh by remember { mutableStateOf(true) }
     val listState = rememberLazyListState()
     
     // 自动刷新日志
     LaunchedEffect(autoRefresh) {
         while (autoRefresh) {
-            logs = DevLogger.getLogs()
+            logs = DevLogger.getLogs(context)
             // 自动滚动到底部
             if (logs.isNotEmpty()) {
                 listState.animateScrollToItem(logs.size - 1)
@@ -64,21 +64,21 @@ fun DevLogScreen(navController: NavController) {
                         )
                     }
                     // 刷新
-                    IconButton(onClick = { logs = DevLogger.getLogs() }) {
+                    IconButton(onClick = { logs = DevLogger.getLogs(context) }) {
                         Icon(Icons.Default.Refresh, "刷新")
                     }
                     // 复制
                     IconButton(onClick = {
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        clipboard.setPrimaryClip(ClipData.newPlainText("logs", DevLogger.getLogsAsText()))
+                        clipboard.setPrimaryClip(ClipData.newPlainText("logs", DevLogger.getLogsAsText(context)))
                         Toast.makeText(context, "日志已复制到剪贴板", Toast.LENGTH_SHORT).show()
                     }) {
                         Icon(Icons.Default.ContentCopy, "复制")
                     }
                     // 清空
                     IconButton(onClick = {
-                        DevLogger.clearLogs()
-                        logs = DevLogger.getLogs()
+                        DevLogger.clearLogs(context)
+                        logs = DevLogger.getLogs(context)
                     }) {
                         Icon(Icons.Default.Delete, "清空")
                     }
