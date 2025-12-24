@@ -5,7 +5,10 @@ import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.ShortcutInfo
+import android.content.pm.ShortcutManager
 import android.graphics.BitmapFactory
+import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
 import android.view.ViewGroup
@@ -32,7 +35,7 @@ import org.json.JSONObject
 
 /**
  * WebView Activity池管理器，类似微信小程序的实现方式
- * 使用 LRU 策略和持久化存储来管理 Slot 分配
+ * 使用 ShortcutManager 实现独立任务显示（vivo OriginOS兼容）
  */
 object WebViewActivityPool {
     private const val TAG = "WebViewPool"
@@ -50,9 +53,7 @@ object WebViewActivityPool {
     )
     
     /**
-     * 启动WebView Activity
-     * 自动分配或复用槽位（LRU策略）
-     * 使用 documentLaunchMode="always" + FLAG_ACTIVITY_NEW_DOCUMENT 确保独立任务（vivo OriginOS兼容）
+     * 启动WebView Activity（使用Shortcut方式实现独立任务）
      */
     fun launchWebView(context: Context, fileId: Long, fileName: String, htmlContent: String) {
         DevLogger.i(TAG, "========== 启动WebView开始 ==========")
@@ -63,16 +64,55 @@ object WebViewActivityPool {
         
         DevLogger.i(TAG, "分配槽位: slotIndex=$slotIndex, activityClass=${activityClass.simpleName}")
         
+        // 创建基础Intent
         val intent = Intent(context, activityClass).apply {
+            action = Intent.ACTION_VIEW
             putExtra("FILE_ID", fileId)
             putExtra("FILE_NAME", fileName)
             putExtra("HTML_CONTENT", htmlContent)
-            
-            // 关键：FLAG_ACTIVITY_NEW_DOCUMENT + FLAG_ACTIVITY_MULTIPLE_TASK 强制创建独立任务
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT)
             addFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
             addFlags(Intent.FLAG_ACTIVITY_RETAIN_IN_RECENTS)
+        }
+        
+        // 使用ShortcutManager启动（关键：让系统识别为独立应用入口）
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+            try {
+                val shortcutManager = context.getSystemService(ShortcutManager::class.java)
+                val shortcutId = "webapp_${fileId}"
+                
+                val shortcutIntent = Intent(context, activityClass).apply {
+                    action = Intent.ACTION_MAIN
+                    putExtra("FILE_ID", fileId)
+                    putExtra("FILE_NAME", fileName)
+                    putExtra("HTML_CONTENT", htmlContent)
+                }
+                
+                val shortcut = ShortcutInfo.Builder(context, shortcutId)
+                    .setShortLabel(fileName)
+                    .setLongLabel(fileName)
+                    .setIcon(Icon.createWithResource(context, R.mipmap.ic_launcher))
+                    .setIntent(shortcutIntent)
+                    .build()
+                
+                // 添加动态快捷方式
+                val existingIds = shortcutManager.dynamicShortcuts.map { it.id }
+                if (shortcutId in existingIds) {
+                    shortcutManager.updateShortcuts(listOf(shortcut))
+                } else {
+                    // 限制快捷方式数量
+                    if (shortcutManager.dynamicShortcuts.size >= shortcutManager.maxShortcutCountPerActivity) {
+                        val oldest = shortcutManager.dynamicShortcuts.firstOrNull()
+                        oldest?.let { shortcutManager.removeDynamicShortcuts(listOf(it.id)) }
+                    }
+                    shortcutManager.addDynamicShortcuts(listOf(shortcut))
+                }
+                
+                DevLogger.i(TAG, "Shortcut已创建/更新: $shortcutId")
+            } catch (e: Exception) {
+                DevLogger.w(TAG, "Shortcut创建失败: ${e.message}")
+            }
         }
         
         val flags = intent.flags
@@ -213,18 +253,6 @@ abstract class BaseWebViewActivity : ComponentActivity() {
         DevLogger.i(TAG, "[$activityName] onCreate 开始")
         DevLogger.i(TAG, "[$activityName] taskId=${taskId}, isTaskRoot=$isTaskRoot")
         DevLogger.i(TAG, "[$activityName] processId=${android.os.Process.myPid()}")
-        
-        // 多进程WebView需设置独立数据目录，防止数据冲突 crash
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            try {
-                // 使用类名作为后缀（如 WebViewActivity1），确保每个进程独享一个目录
-                WebView.setDataDirectorySuffix(activityName)
-                DevLogger.d(TAG, "[$activityName] WebView数据目录设置成功: $activityName")
-            } catch (e: Exception) {
-                // 如果已初始化过WebView，再次设置会抛出异常，忽略即可
-                DevLogger.w(TAG, "[$activityName] WebView数据目录已设置: ${e.message}")
-            }
-        }
 
         super.onCreate(savedInstanceState)
         

@@ -32,7 +32,7 @@
             </intent-filter>
         </activity>
         
-        <!-- 独立WebView Activity池，每个Activity有唯一taskAffinity确保任务独立（vivo OriginOS兼容） -->
+        <!-- 独立WebView Activity池，使用Shortcut实现独立任务显示（vivo OriginOS兼容） -->
         <activity
                 android:name=".WebViewActivity"
                 android:exported="true"
@@ -46,8 +46,13 @@
                 android:persistableMode="persistAcrossReboots"
                 android:resizeableActivity="true"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.HLaunch.webapp0"
-                android:process=":webapp0" />
+                android:taskAffinity="com.HLaunch.webapp0">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </activity>
         
         <activity
                 android:name=".WebViewActivity1"
@@ -62,8 +67,13 @@
                 android:persistableMode="persistAcrossReboots"
                 android:resizeableActivity="true"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.HLaunch.webapp1"
-                android:process=":webapp1" />
+                android:taskAffinity="com.HLaunch.webapp1">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </activity>
         
         <activity
                 android:name=".WebViewActivity2"
@@ -78,8 +88,13 @@
                 android:persistableMode="persistAcrossReboots"
                 android:resizeableActivity="true"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.HLaunch.webapp2"
-                android:process=":webapp2" />
+                android:taskAffinity="com.HLaunch.webapp2">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </activity>
         
         <activity
                 android:name=".WebViewActivity3"
@@ -94,8 +109,13 @@
                 android:persistableMode="persistAcrossReboots"
                 android:resizeableActivity="true"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.HLaunch.webapp3"
-                android:process=":webapp3" />
+                android:taskAffinity="com.HLaunch.webapp3">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </activity>
         
         <activity
                 android:name=".WebViewActivity4"
@@ -110,8 +130,13 @@
                 android:persistableMode="persistAcrossReboots"
                 android:resizeableActivity="true"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.HLaunch.webapp4"
-                android:process=":webapp4" />
+                android:taskAffinity="com.HLaunch.webapp4">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </activity>
         
         <activity
                 android:name=".WebViewActivity5"
@@ -126,8 +151,13 @@
                 android:persistableMode="persistAcrossReboots"
                 android:resizeableActivity="true"
                 android:configChanges="orientation|screenSize|keyboardHidden"
-                android:taskAffinity="com.HLaunch.webapp5"
-                android:process=":webapp5" />
+                android:taskAffinity="com.HLaunch.webapp5">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </activity>
         
         <provider
             android:name="androidx.core.content.FileProvider"
