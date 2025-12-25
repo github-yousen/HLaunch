@@ -69,15 +69,19 @@ object WebViewActivityPool {
             putExtra("FILE_NAME", fileName)
             putExtra("HTML_CONTENT", htmlContent)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT)
             addFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
         }
         
         val flags = intent.flags
         DevLogger.i(TAG, "intent_info: flags=0x${Integer.toHexString(flags)}, component=$aliasName")
-        DevLogger.i(TAG, "flag_details: NEW_TASK=${(flags and Intent.FLAG_ACTIVITY_NEW_TASK) != 0}, NEW_DOC=${(flags and Intent.FLAG_ACTIVITY_NEW_DOCUMENT) != 0}, MULTI_TASK=${(flags and Intent.FLAG_ACTIVITY_MULTIPLE_TASK) != 0}")
+        DevLogger.i(TAG, "flag_details: NEW_TASK=${(flags and Intent.FLAG_ACTIVITY_NEW_TASK) != 0}, MULTI_TASK=${(flags and Intent.FLAG_ACTIVITY_MULTIPLE_TASK) != 0}")
         
-        context.startActivity(intent)
+        try {
+            context.startActivity(intent)
+            DevLogger.i(TAG, "startActivity_called_successfully")
+        } catch (e: Exception) {
+            DevLogger.e(TAG, "startActivity_failed: ${e.message}")
+        }
         DevLogger.i(TAG, "========== LAUNCH_WEBVIEW_END ==========")
     }
 
@@ -197,7 +201,9 @@ abstract class BaseWebViewActivity : ComponentActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         val activityName = this.javaClass.simpleName
+        val runtimeFlags = intent.flags
         DevLogger.i(TAG, "[$activityName] onCreate_start")
+        DevLogger.i(TAG, "[$activityName] runtime_flags: 0x${Integer.toHexString(runtimeFlags)}")
         DevLogger.i(TAG, "[$activityName] task_info: taskId=$taskId, isTaskRoot=$isTaskRoot")
         DevLogger.i(TAG, "[$activityName] process_info: pid=${android.os.Process.myPid()}, uid=${android.os.Process.myUid()}")
         DevLogger.i(TAG, "[$activityName] activity_info: hashCode=${this.hashCode()}, componentName=${componentName}")
@@ -272,6 +278,18 @@ abstract class BaseWebViewActivity : ComponentActivity() {
         DevLogger.d(TAG, "[$activityName] onStop: taskId=$taskId")
     }
     
+    override fun finish() {
+        val activityName = this.javaClass.simpleName
+        DevLogger.i(TAG, "[$activityName] finish_called: isFinishing=$isFinishing")
+        super.finish()
+    }
+
+    override fun finishAndRemoveTask() {
+        val activityName = this.javaClass.simpleName
+        DevLogger.i(TAG, "[$activityName] finishAndRemoveTask_called")
+        super.finishAndRemoveTask()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         val activityName = this.javaClass.simpleName
