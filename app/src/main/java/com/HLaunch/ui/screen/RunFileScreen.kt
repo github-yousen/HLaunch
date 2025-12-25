@@ -2,10 +2,7 @@ package com.HLaunch.ui.screen
 
 import android.annotation.SuppressLint
 import android.view.ViewGroup
-import android.webkit.WebChromeClient
-import android.webkit.WebSettings
 import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -21,7 +18,7 @@ import androidx.navigation.NavController
 import com.HLaunch.data.entity.HtmlFile
 import com.HLaunch.ui.navigation.Screen
 import com.HLaunch.viewmodel.HtmlFileViewModel
-import kotlinx.coroutines.launch
+import com.HLaunch.webview.WebViewPool
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,29 +27,52 @@ fun RunFileScreen(
     viewModel: HtmlFileViewModel,
     fileId: Long
 ) {
-    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var file by remember { mutableStateOf<HtmlFile?>(null) }
     var isLoading by remember { mutableStateOf(true) }
-    var webViewRef by remember { mutableStateOf<WebView?>(null) }
     var canGoBack by remember { mutableStateOf(false) }
     var pageTitle by remember { mutableStateOf("") }
     var showMenu by remember { mutableStateOf(false) }
+    var webView by remember { mutableStateOf<WebView?>(null) }
     
     val runningTasks by viewModel.runningTasks.collectAsState()
     
-    // 加载文件并添加到运行任务
+    // 加载文件并获取/创建WebView
     LaunchedEffect(fileId) {
         val loadedFile = viewModel.getFileById(fileId)
         loadedFile?.let {
             file = it
             viewModel.runFile(it)
+            // 从池中获取或创建WebView
+            webView = WebViewPool.getOrCreate(
+                context = context,
+                fileId = fileId,
+                fileName = it.name,
+                htmlContent = it.content,
+                onTitleChanged = { title -> pageTitle = title }
+            )
+            // 恢复已有的页面标题
+            pageTitle = WebViewPool.getPageTitle(fileId)
         }
         isLoading = false
     }
     
+    // 更新canGoBack状态
+    LaunchedEffect(webView) {
+        webView?.let { canGoBack = it.canGoBack() }
+    }
+    
+    // 页面离开时从父容器移除WebView（但不销毁）
+    DisposableEffect(fileId) {
+        onDispose {
+            WebViewPool.detach(fileId)
+        }
+    }
+    
     // 处理返回键
     BackHandler(enabled = canGoBack) {
-        webViewRef?.goBack()
+        webView?.goBack()
+        canGoBack = webView?.canGoBack() ?: false
     }
     
     Scaffold(
@@ -79,6 +99,14 @@ fun RunFileScreen(
                     }
                 },
                 actions = {
+                    // 主页按钮
+                    IconButton(onClick = { 
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Home.route) { inclusive = false }
+                        }
+                    }) {
+                        Icon(Icons.Default.Home, "主页")
+                    }
                     // 多任务切换
                     if (runningTasks.size > 1) {
                         IconButton(onClick = { navController.navigate(Screen.RunningTasks.route) }) {
@@ -89,7 +117,9 @@ fun RunFileScreen(
                     }
                     
                     // 刷新
-                    IconButton(onClick = { webViewRef?.reload() }) {
+                    IconButton(onClick = { 
+                        file?.let { WebViewPool.reload(fileId, it.content) }
+                    }) {
                         Icon(Icons.Default.Refresh, "刷新")
                     }
                     
@@ -114,6 +144,7 @@ fun RunFileScreen(
                                 text = { Text("关闭此任务") },
                                 onClick = {
                                     showMenu = false
+                                    WebViewPool.close(fileId)
                                     viewModel.closeTask(fileId)
                                     navController.popBackStack()
                                 },
@@ -123,6 +154,7 @@ fun RunFileScreen(
                                 text = { Text("关闭所有任务") },
                                 onClick = {
                                     showMenu = false
+                                    WebViewPool.closeAll()
                                     viewModel.closeAllTasks()
                                     navController.popBackStack()
                                 },
@@ -158,82 +190,42 @@ fun RunFileScreen(
                     Text("文件不存在")
                 }
             } else {
-                // WebView
-                HtmlWebView(
-                    htmlContent = file!!.content,
-                    onWebViewCreated = { webViewRef = it },
-                    onCanGoBackChanged = { canGoBack = it },
-                    onTitleChanged = { pageTitle = it }
+                // 使用池中的WebView
+                PooledWebView(
+                    webView = webView,
+                    onCanGoBackChanged = { canGoBack = it }
                 )
             }
         }
     }
 }
 
-@SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun HtmlWebView(
-    htmlContent: String,
-    onWebViewCreated: (WebView) -> Unit,
-    onCanGoBackChanged: (Boolean) -> Unit,
-    onTitleChanged: (String) -> Unit
+private fun PooledWebView(
+    webView: WebView?,
+    onCanGoBackChanged: (Boolean) -> Unit
 ) {
-    val context = LocalContext.current
-    
-    AndroidView(
-        factory = { ctx ->
-            WebView(ctx).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                )
-                
-                settings.apply {
-                    javaScriptEnabled = true
-                    domStorageEnabled = true
-                    databaseEnabled = true
-                    allowFileAccess = true
-                    allowContentAccess = true
-                    loadWithOverviewMode = true
-                    useWideViewPort = true
-                    builtInZoomControls = true
-                    displayZoomControls = false
-                    setSupportZoom(true)
-                    mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                    mediaPlaybackRequiresUserGesture = false
-                }
-                
-                webViewClient = object : WebViewClient() {
+    webView?.let { wv ->
+        AndroidView(
+            factory = { _ ->
+                // 先从旧父容器移除
+                (wv.parent as? ViewGroup)?.removeView(wv)
+                wv
+            },
+            update = { view ->
+                view.webViewClient = object : android.webkit.WebViewClient() {
                     override fun onPageFinished(view: WebView?, url: String?) {
                         super.onPageFinished(view, url)
-                        onCanGoBackChanged(canGoBack())
+                        onCanGoBackChanged(view?.canGoBack() ?: false)
                     }
                     
                     override fun doUpdateVisitedHistory(view: WebView?, url: String?, isReload: Boolean) {
                         super.doUpdateVisitedHistory(view, url, isReload)
-                        onCanGoBackChanged(canGoBack())
+                        onCanGoBackChanged(view?.canGoBack() ?: false)
                     }
                 }
-                
-                webChromeClient = object : WebChromeClient() {
-                    override fun onReceivedTitle(view: WebView?, title: String?) {
-                        super.onReceivedTitle(view, title)
-                        title?.let { onTitleChanged(it) }
-                    }
-                }
-                
-                onWebViewCreated(this)
-                
-                // 加载HTML内容
-                loadDataWithBaseURL(
-                    "file:///android_asset/",
-                    htmlContent,
-                    "text/html",
-                    "UTF-8",
-                    null
-                )
-            }
-        },
-        modifier = Modifier.fillMaxSize()
-    )
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+    }
 }

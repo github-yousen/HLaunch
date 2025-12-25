@@ -17,6 +17,7 @@ import androidx.navigation.NavController
 import com.HLaunch.data.entity.RunningTask
 import com.HLaunch.ui.navigation.Screen
 import com.HLaunch.viewmodel.HtmlFileViewModel
+import com.HLaunch.webview.WebViewPool
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -38,8 +39,19 @@ fun RunningTasksScreen(
                     }
                 },
                 actions = {
+                    // 主页按钮
+                    IconButton(onClick = { 
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Home.route) { inclusive = false }
+                        }
+                    }) {
+                        Icon(Icons.Default.Home, "主页")
+                    }
                     if (runningTasks.isNotEmpty()) {
-                        TextButton(onClick = { viewModel.closeAllTasks() }) {
+                        TextButton(onClick = { 
+                            WebViewPool.closeAll()
+                            viewModel.closeAllTasks() 
+                        }) {
                             Text("全部关闭")
                         }
                     }
@@ -78,7 +90,6 @@ fun RunningTasksScreen(
                 }
             }
         } else {
-            // 类似微信小程序的多任务网格视图
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 modifier = Modifier
@@ -98,6 +109,7 @@ fun RunningTasksScreen(
                             }
                         },
                         onClose = {
+                            WebViewPool.close(task.htmlFileId)
                             viewModel.closeTask(task.htmlFileId)
                         }
                     )

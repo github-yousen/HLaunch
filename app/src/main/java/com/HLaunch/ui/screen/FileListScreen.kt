@@ -1,6 +1,5 @@
 package com.HLaunch.ui.screen
 
-import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,10 +8,8 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.HLaunch.WebViewActivityPool
 import com.HLaunch.data.entity.FileSource
 import com.HLaunch.data.entity.HtmlFile
 import com.HLaunch.ui.navigation.Screen
@@ -27,7 +24,6 @@ fun FileListScreen(
     navController: NavController,
     viewModel: HtmlFileViewModel
 ) {
-    val context = LocalContext.current
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("全部", "本地", "导入", "Git")
     
@@ -96,8 +92,7 @@ fun FileListScreen(
                         FileListItemWithDelete(
                             file = file,
                         onRun = {
-                            // 使用Activity池启动独立WebViewActivity
-                            WebViewActivityPool.launchWebView(context, file.id, file.name, file.content)
+                            navController.navigate(Screen.RunFile.createRoute(file.id))
                         },
                             onEdit = { navController.navigate(Screen.EditFile.createRoute(file.id)) },
                             onFavorite = { viewModel.toggleFavorite(file) },
