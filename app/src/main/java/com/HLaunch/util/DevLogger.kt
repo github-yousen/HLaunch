@@ -102,7 +102,8 @@ object DevLogger {
             RandomAccessFile(logFile, "rw").use { raf ->
                 raf.channel.lock().use { _ ->
                     raf.seek(raf.length())
-                    raf.writeBytes(entry.toLine() + "\n")
+                    val logLine = entry.toLine() + "\n"
+                    raf.write(logLine.toByteArray(Charsets.UTF_8))
                 }
             }
             trimLogsIfNeeded(ctx)
@@ -116,10 +117,10 @@ object DevLogger {
             val logFile = getLogFile(context)
             if (!logFile.exists()) return
             
-            val lines = logFile.readLines()
+            val lines = logFile.readLines(Charsets.UTF_8)
             if (lines.size > MAX_LOGS) {
                 val trimmed = lines.takeLast(MAX_LOGS)
-                logFile.writeText(trimmed.joinToString("\n") + "\n")
+                logFile.writeText(trimmed.joinToString("\n") + "\n", Charsets.UTF_8)
             }
         } catch (e: Exception) {
             // ignore

@@ -145,7 +145,7 @@
                 android:exported="true"
                 android:label="Web应用4"
                 android:icon="@mipmap/ic_launcher"
-                android:taskAffinity=".webapp4">
+                android:taskAffinity="com.HLaunch.webapp4">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.DEFAULT"/>
