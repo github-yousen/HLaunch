@@ -112,7 +112,6 @@ fun EditFileScreen(
                             Text(
                                 text = "来源: ${when (file.source) {
                                     com.HLaunch.data.entity.FileSource.LOCAL -> "本地创建"
-                                    com.HLaunch.data.entity.FileSource.IMPORTED -> "导入文件"
                                     com.HLaunch.data.entity.FileSource.GIT -> "Git同步"
                                 }}",
                                 style = MaterialTheme.typography.bodySmall

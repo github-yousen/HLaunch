@@ -19,4 +19,8 @@ class GitRepoRepository(private val dao: GitRepoDao) {
     suspend fun delete(repo: GitRepo) = dao.delete(repo)
     
     suspend fun updateLastSyncTime(id: Long) = dao.updateLastSyncTime(id, System.currentTimeMillis())
+    
+    suspend fun disableSync(id: Long) = dao.updateSyncEnabled(id, false)
+    
+    suspend fun enableSync(id: Long) = dao.updateSyncEnabled(id, true)
 }

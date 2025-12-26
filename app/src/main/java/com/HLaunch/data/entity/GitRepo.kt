@@ -16,5 +16,6 @@ data class GitRepo(
     val localPath: String,               // 本地存储路径
     val lastSyncAt: Long? = null,        // 最后同步时间
     val autoSync: Boolean = false,       // 是否自动同步
+    val syncEnabled: Boolean = true,     // 是否启用同步（取消跟踪后为false）
     val createdAt: Long = System.currentTimeMillis()
 )

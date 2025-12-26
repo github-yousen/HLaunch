@@ -17,7 +17,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.HLaunch.data.entity.FileSource
-import com.HLaunch.ui.navigation.Screen
 import com.HLaunch.viewmodel.HtmlFileViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -26,11 +25,28 @@ fun CreateFileScreen(
     navController: NavController,
     viewModel: HtmlFileViewModel
 ) {
+    val context = LocalContext.current
     var fileName by remember { mutableStateOf("") }
     var htmlContent by remember { mutableStateOf("") }
     var showPreview by remember { mutableStateOf(false) }
     var isFileNameManuallyEdited by remember { mutableStateOf(false) }
-    val context = LocalContext.current
+    
+    // 文件选择器
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            try {
+                context.contentResolver.openInputStream(it)?.use { inputStream ->
+                    val content = inputStream.bufferedReader().readText()
+                    htmlContent = content
+                    isFileNameManuallyEdited = false
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
     
     // 从HTML内容中提取title
     fun extractTitleFromHtml(html: String): String? {
@@ -47,31 +63,6 @@ fun CreateFileScreen(
         }
     }
     
-    // 文件选择器
-    val filePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        uri?.let {
-            try {
-                context.contentResolver.openInputStream(it)?.use { stream ->
-                    val content = stream.bufferedReader().readText()
-                    htmlContent = content
-                    // 优先从HTML title提取，否则用文件名
-                    val title = extractTitleFromHtml(content)
-                    if (title != null) {
-                        fileName = title
-                    } else {
-                        val name = it.lastPathSegment?.substringAfterLast("/")?.substringBeforeLast(".") ?: "imported"
-                        fileName = name
-                    }
-                    isFileNameManuallyEdited = false
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -83,7 +74,7 @@ fun CreateFileScreen(
                 },
                 actions = {
                     // 导入文件
-                    IconButton(onClick = { filePickerLauncher.launch(arrayOf("text/html", "*/*")) }) {
+                    IconButton(onClick = { filePickerLauncher.launch("text/html") }) {
                         Icon(Icons.Default.FileOpen, "导入文件")
                     }
                     // 预览

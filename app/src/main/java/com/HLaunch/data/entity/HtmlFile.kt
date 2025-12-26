@@ -6,7 +6,6 @@ import androidx.room.PrimaryKey
 // HTML文件来源类型
 enum class FileSource {
     LOCAL,      // 本地创建
-    IMPORTED,   // 从存储导入
     GIT         // Git仓库同步
 }
 

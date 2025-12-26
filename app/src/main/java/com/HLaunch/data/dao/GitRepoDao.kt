@@ -27,4 +27,7 @@ interface GitRepoDao {
     
     @Query("UPDATE git_repos SET lastSyncAt = :time WHERE id = :id")
     suspend fun updateLastSyncTime(id: Long, time: Long)
+    
+    @Query("UPDATE git_repos SET syncEnabled = :enabled WHERE id = :id")
+    suspend fun updateSyncEnabled(id: Long, enabled: Boolean)
 }

@@ -32,15 +32,14 @@ fun HomeScreen(
     val context = LocalContext.current
     val allFiles by fileViewModel.allFiles.collectAsState()
     val localFiles by fileViewModel.getLocalFiles().collectAsState(initial = emptyList())
-    val importedFiles by fileViewModel.getImportedFiles().collectAsState(initial = emptyList())
     val gitFiles by fileViewModel.getGitFiles().collectAsState(initial = emptyList())
     val favoriteFiles by fileViewModel.favoriteFiles.collectAsState()
     val runningTasks by fileViewModel.runningTasks.collectAsState()
     val isDevMode = remember { DevLogger.isDevModeEnabled(context) }
     
-    // 文件筛选：0-全部 1-本地 2-导入 3-Git
+    // 文件筛选：0-全部 1-本地 2-Git
     var fileFilter by remember { mutableIntStateOf(0) }
-    val filterLabels = listOf("全部文件", "本地", "导入", "Git")
+    val filterLabels = listOf("全部文件", "本地", "Git")
     // 文件列表展开/收起
     var filesExpanded by remember { mutableStateOf(true) }
     
@@ -112,8 +111,7 @@ fun HomeScreen(
             // 全部文件（排除已收藏的，最多显示10个）
             val filteredFiles = when (fileFilter) {
                 1 -> localFiles
-                2 -> importedFiles
-                3 -> gitFiles
+                2 -> gitFiles
                 else -> allFiles
             }
             val nonFavoriteFiles = filteredFiles.filter { !it.isFavorite }.take(10)
@@ -281,16 +279,10 @@ private fun SectionHeader(
                         trailingIcon = { if (currentFilter == 1) Icon(Icons.Default.Check, null) }
                     )
                     DropdownMenuItem(
-                        text = { Text("导入") },
-                        onClick = { filterExpanded = false; onFilterChange(2) },
-                        leadingIcon = { Icon(Icons.Default.FileOpen, null) },
-                        trailingIcon = { if (currentFilter == 2) Icon(Icons.Default.Check, null) }
-                    )
-                    DropdownMenuItem(
                         text = { Text("Git") },
-                        onClick = { filterExpanded = false; onFilterChange(3) },
+                        onClick = { filterExpanded = false; onFilterChange(2) },
                         leadingIcon = { Icon(Icons.Default.Cloud, null) },
-                        trailingIcon = { if (currentFilter == 3) Icon(Icons.Default.Check, null) }
+                        trailingIcon = { if (currentFilter == 2) Icon(Icons.Default.Check, null) }
                     )
                 }
             }
@@ -333,7 +325,6 @@ fun FileListItem(
             Icon(
                 imageVector = when (file.source) {
                     FileSource.LOCAL -> Icons.Default.Description
-                    FileSource.IMPORTED -> Icons.Default.FileOpen
                     FileSource.GIT -> Icons.Default.Cloud
                 },
                 contentDescription = null,

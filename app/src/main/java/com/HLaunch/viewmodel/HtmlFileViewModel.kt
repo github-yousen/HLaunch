@@ -12,7 +12,9 @@ import kotlinx.coroutines.launch
 
 class HtmlFileViewModel(application: Application) : AndroidViewModel(application) {
     
-    private val repository = (application as HLaunchApp).htmlFileRepository
+    private val app = application as HLaunchApp
+    private val repository = app.htmlFileRepository
+    private val gitRepoRepository = app.gitRepoRepository
     
     val allFiles: StateFlow<List<HtmlFile>> = repository.allFiles
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
@@ -36,7 +38,6 @@ class HtmlFileViewModel(application: Application) : AndroidViewModel(application
     val selectedFile: StateFlow<HtmlFile?> = _selectedFile.asStateFlow()
     
     fun getLocalFiles(): Flow<List<HtmlFile>> = repository.getFilesBySource(FileSource.LOCAL)
-    fun getImportedFiles(): Flow<List<HtmlFile>> = repository.getFilesBySource(FileSource.IMPORTED)
     fun getGitFiles(): Flow<List<HtmlFile>> = repository.getFilesBySource(FileSource.GIT)
     fun getFilesByRepo(repoId: Long): Flow<List<HtmlFile>> = repository.getFilesByRepo(repoId)
     
@@ -62,6 +63,18 @@ class HtmlFileViewModel(application: Application) : AndroidViewModel(application
             repository.delete(file)
             // 同时关闭运行中的任务
             closeTask(file.id)
+        }
+    }
+    
+    // 删除文件并禁用Git仓库同步
+    fun deleteFileAndDisableSync(file: HtmlFile) {
+        viewModelScope.launch {
+            repository.delete(file)
+            closeTask(file.id)
+            // 禁用该仓库的同步
+            file.gitRepoId?.let { repoId ->
+                gitRepoRepository.disableSync(repoId)
+            }
         }
     }
     
