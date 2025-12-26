@@ -17,6 +17,9 @@ interface HtmlFileDao {
     @Query("SELECT * FROM html_files WHERE gitRepoId = :repoId ORDER BY name ASC")
     fun getFilesByRepo(repoId: Long): Flow<List<HtmlFile>>
     
+    @Query("SELECT * FROM html_files WHERE gitRepoId = :repoId")
+    suspend fun getFilesByRepoSync(repoId: Long): List<HtmlFile>
+    
     @Query("SELECT * FROM html_files WHERE id = :id")
     suspend fun getFileById(id: Long): HtmlFile?
     

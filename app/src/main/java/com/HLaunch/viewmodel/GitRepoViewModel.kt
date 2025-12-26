@@ -87,9 +87,8 @@ class GitRepoViewModel(application: Application) : AndroidViewModel(application)
                 
                 if (success) {
                     repoRepository.updateLastSyncTime(repo.id)
-                    // 重新扫描HTML文件
-                    fileRepository.deleteByRepoId(repo.id)
-                    importHtmlFilesFromRepo(repo.id, repo.localPath)
+                    // 增量同步HTML文件，保留原有fileId
+                    syncHtmlFilesFromRepo(repo.id, repo.localPath)
                     _successMessage.value = "同步成功"
                     onComplete(true)
                 } else {
@@ -184,6 +183,59 @@ class GitRepoViewModel(application: Application) : AndroidViewModel(application)
                     )
                     fileRepository.insert(file)
                 }
+        }
+    }
+    
+    // 增量同步HTML文件，保留原有fileId以保持localStorage数据
+    private suspend fun syncHtmlFilesFromRepo(repoId: Long, localPath: String) {
+        withContext(Dispatchers.IO) {
+            val repoDir = File(localPath)
+            if (!repoDir.exists()) return@withContext
+            
+            // 获取数据库中该仓库的所有文件，建立gitFilePath到文件的映射
+            val existingFiles = fileRepository.getFilesByRepoSync(repoId)
+            val existingFileMap = existingFiles.associateBy { it.gitFilePath }
+            
+            // 扫描仓库中的HTML文件
+            val repoHtmlFiles = repoDir.walkTopDown()
+                .filter { it.isFile && it.extension.lowercase() == "html" }
+                .toList()
+            
+            val repoFilePaths = mutableSetOf<String>()
+            
+            repoHtmlFiles.forEach { htmlFile ->
+                val relativePath = htmlFile.relativeTo(repoDir).path
+                repoFilePaths.add(relativePath)
+                val content = htmlFile.readText()
+                
+                val existingFile = existingFileMap[relativePath]
+                if (existingFile != null) {
+                    // 文件已存在，更新内容但保留id
+                    if (existingFile.content != content) {
+                        fileRepository.update(existingFile.copy(
+                            content = content,
+                            updatedAt = System.currentTimeMillis()
+                        ))
+                    }
+                } else {
+                    // 新文件，插入
+                    val file = HtmlFile(
+                        name = htmlFile.nameWithoutExtension,
+                        content = content,
+                        source = FileSource.GIT,
+                        gitRepoId = repoId,
+                        gitFilePath = relativePath
+                    )
+                    fileRepository.insert(file)
+                }
+            }
+            
+            // 删除仓库中已不存在的文件
+            existingFiles.forEach { file ->
+                if (file.gitFilePath != null && file.gitFilePath !in repoFilePaths) {
+                    fileRepository.delete(file)
+                }
+            }
         }
     }
     

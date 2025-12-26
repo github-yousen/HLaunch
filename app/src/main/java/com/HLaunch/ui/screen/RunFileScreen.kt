@@ -11,14 +11,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.animation.core.*
 import androidx.navigation.NavController
 import com.HLaunch.data.entity.HtmlFile
 import com.HLaunch.ui.navigation.Screen
 import com.HLaunch.viewmodel.HtmlFileViewModel
 import com.HLaunch.webview.WebViewPool
+import com.HLaunch.util.DevLogger
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,6 +39,16 @@ fun RunFileScreen(
     var webView by remember { mutableStateOf<WebView?>(null) }
     
     val runningTasks by viewModel.runningTasks.collectAsState()
+    val isDevMode = remember { DevLogger.isDevModeEnabled(context) }
+    var isRefreshing by remember { mutableStateOf(false) }
+    
+    // 刷新动画：无限旋转
+    val rotation by animateFloatAsState(
+        targetValue = if (isRefreshing) 360f else 0f,
+        animationSpec = tween(durationMillis = 500, easing = LinearEasing),
+        finishedListener = { isRefreshing = false },
+        label = "refresh"
+    )
     
     // 加载文件并获取/创建WebView
     LaunchedEffect(fileId) {
@@ -99,6 +112,12 @@ fun RunFileScreen(
                     }
                 },
                 actions = {
+                    // 开发者日志按钮（仅开发者模式显示）
+                    if (isDevMode) {
+                        IconButton(onClick = { navController.navigate(Screen.DevLog.route) }) {
+                            Icon(Icons.Default.BugReport, "开发者日志")
+                        }
+                    }
                     // 主页按钮
                     IconButton(onClick = { 
                         navController.navigate(Screen.Home.route) {
@@ -118,9 +137,16 @@ fun RunFileScreen(
                     
                     // 刷新
                     IconButton(onClick = { 
-                        file?.let { WebViewPool.reload(fileId, it.content) }
+                        file?.let { 
+                            isRefreshing = true
+                            WebViewPool.reload(fileId, it.content) 
+                        }
                     }) {
-                        Icon(Icons.Default.Refresh, "刷新")
+                        Icon(
+                            Icons.Default.Refresh, 
+                            "刷新",
+                            modifier = Modifier.rotate(rotation)
+                        )
                     }
                     
                     // 更多菜单

@@ -15,6 +15,8 @@ class HtmlFileRepository(private val dao: HtmlFileDao) {
     
     fun getFilesByRepo(repoId: Long): Flow<List<HtmlFile>> = dao.getFilesByRepo(repoId)
     
+    suspend fun getFilesByRepoSync(repoId: Long): List<HtmlFile> = dao.getFilesByRepoSync(repoId)
+    
     suspend fun getFileById(id: Long): HtmlFile? = dao.getFileById(id)
     
     suspend fun insert(file: HtmlFile): Long = dao.insert(file)

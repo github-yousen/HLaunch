@@ -31,14 +31,12 @@ import kotlinx.coroutines.delay
 fun DevLogScreen(navController: NavController) {
     val context = LocalContext.current
     var logs by remember { mutableStateOf(DevLogger.getLogs(context)) }
-    var autoRefresh by remember { mutableStateOf(true) }
     val listState = rememberLazyListState()
     
-    // 自动刷新日志
-    LaunchedEffect(autoRefresh) {
-        while (autoRefresh) {
+    // 自动刷新日志，每秒刷新一次并滚动到底部
+    LaunchedEffect(Unit) {
+        while (true) {
             logs = DevLogger.getLogs(context)
-            // 自动滚动到底部
             if (logs.isNotEmpty()) {
                 listState.animateScrollToItem(logs.size - 1)
             }
@@ -56,17 +54,6 @@ fun DevLogScreen(navController: NavController) {
                     }
                 },
                 actions = {
-                    // 自动刷新开关
-                    IconButton(onClick = { autoRefresh = !autoRefresh }) {
-                        Icon(
-                            if (autoRefresh) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            if (autoRefresh) "暂停刷新" else "开始刷新"
-                        )
-                    }
-                    // 刷新
-                    IconButton(onClick = { logs = DevLogger.getLogs(context) }) {
-                        Icon(Icons.Default.Refresh, "刷新")
-                    }
                     // 复制
                     IconButton(onClick = {
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -105,7 +92,6 @@ fun DevLogScreen(navController: NavController) {
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     Text("总日志: ${logs.size}", style = MaterialTheme.typography.labelMedium)
-                    Text("自动刷新: ${if (autoRefresh) "开启" else "关闭"}", style = MaterialTheme.typography.labelMedium)
                 }
             }
             

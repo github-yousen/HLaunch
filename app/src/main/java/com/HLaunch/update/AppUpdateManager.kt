@@ -163,7 +163,7 @@ class AppUpdateManager(private val context: Context) {
             
             connection.inputStream.use { input ->
                 FileOutputStream(targetFile).use { output ->
-                    val buffer = ByteArray(8192)
+                    val buffer = ByteArray(65536)
                     var bytesRead: Int
                     var lastReportTime = 0L
                     
