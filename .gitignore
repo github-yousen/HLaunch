@@ -96,3 +96,6 @@ signing.properties
 # Misplaced resource folders in root
 /drawable/
 /mipmap-*/
+
+# Html app folder
+/Html-app/

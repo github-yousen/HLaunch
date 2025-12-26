@@ -32,9 +32,16 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val allFiles by fileViewModel.allFiles.collectAsState()
+    val localFiles by fileViewModel.getLocalFiles().collectAsState(initial = emptyList())
+    val importedFiles by fileViewModel.getImportedFiles().collectAsState(initial = emptyList())
+    val gitFiles by fileViewModel.getGitFiles().collectAsState(initial = emptyList())
     val favoriteFiles by fileViewModel.favoriteFiles.collectAsState()
     val runningTasks by fileViewModel.runningTasks.collectAsState()
     val isDevMode = remember { DevLogger.isDevModeEnabled(context) }
+    
+    // 文件筛选：0-全部 1-本地 2-导入 3-Git
+    var fileFilter by remember { mutableIntStateOf(0) }
+    val filterLabels = listOf("全部文件", "本地", "导入", "Git")
     
     Scaffold(
         topBar = {
@@ -127,23 +134,42 @@ fun HomeScreen(
             }
             
             // 全部文件（排除已收藏的，最多显示10个）
-            val nonFavoriteFiles = allFiles.filter { !it.isFavorite }.take(10)
-            if (nonFavoriteFiles.isNotEmpty()) {
+            val filteredFiles = when (fileFilter) {
+                1 -> localFiles
+                2 -> importedFiles
+                3 -> gitFiles
+                else -> allFiles
+            }
+            val nonFavoriteFiles = filteredFiles.filter { !it.isFavorite }.take(10)
+            if (nonFavoriteFiles.isNotEmpty() || fileFilter != 0) {
                 item {
-                    SectionHeader("全部文件", Icons.Default.Folder) {
-                        navController.navigate(Screen.FileList.route)
-                    }
-                }
-                items(nonFavoriteFiles) { file ->
-                    FileListItem(
-                        file = file,
-                        onClick = { navController.navigate(Screen.EditFile.createRoute(file.id)) },
-                        onRun = {
-                            navController.navigate(Screen.RunFile.createRoute(file.id))
-                        },
-                        onEdit = { navController.navigate(Screen.EditFile.createRoute(file.id)) },
-                        onFavorite = { fileViewModel.toggleFavorite(file) }
+                    SectionHeader(
+                        title = filterLabels[fileFilter],
+                        icon = Icons.Default.Folder,
+                        currentFilter = fileFilter,
+                        onFilterChange = { fileFilter = it }
                     )
+                }
+                if (nonFavoriteFiles.isEmpty()) {
+                    item {
+                        Text(
+                            text = "暂无${filterLabels[fileFilter]}文件",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    items(nonFavoriteFiles) { file ->
+                        FileListItem(
+                            file = file,
+                            onClick = { navController.navigate(Screen.EditFile.createRoute(file.id)) },
+                            onRun = {
+                                navController.navigate(Screen.RunFile.createRoute(file.id))
+                            },
+                            onEdit = { navController.navigate(Screen.EditFile.createRoute(file.id)) },
+                            onFavorite = { fileViewModel.toggleFavorite(file) }
+                        )
+                    }
                 }
             }
             
@@ -225,8 +251,11 @@ private fun QuickActionCard(
 private fun SectionHeader(
     title: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    onMore: (() -> Unit)? = null
+    currentFilter: Int? = null,
+    onFilterChange: ((Int) -> Unit)? = null
 ) {
+    var expanded by remember { mutableStateOf(false) }
+    
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
@@ -243,9 +272,44 @@ private fun SectionHeader(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.weight(1f)
         )
-        if (onMore != null) {
-            TextButton(onClick = onMore) {
-                Text("查看全部")
+        if (onFilterChange != null) {
+            Box {
+                IconButton(onClick = { expanded = true }) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = "筛选",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("全部文件") },
+                        onClick = { expanded = false; onFilterChange(0) },
+                        leadingIcon = { Icon(Icons.Default.Folder, null) },
+                        trailingIcon = { if (currentFilter == 0) Icon(Icons.Default.Check, null) }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("本地") },
+                        onClick = { expanded = false; onFilterChange(1) },
+                        leadingIcon = { Icon(Icons.Default.Description, null) },
+                        trailingIcon = { if (currentFilter == 1) Icon(Icons.Default.Check, null) }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("导入") },
+                        onClick = { expanded = false; onFilterChange(2) },
+                        leadingIcon = { Icon(Icons.Default.FileOpen, null) },
+                        trailingIcon = { if (currentFilter == 2) Icon(Icons.Default.Check, null) }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Git") },
+                        onClick = { expanded = false; onFilterChange(3) },
+                        leadingIcon = { Icon(Icons.Default.Cloud, null) },
+                        trailingIcon = { if (currentFilter == 3) Icon(Icons.Default.Check, null) }
+                    )
+                }
             }
         }
     }
