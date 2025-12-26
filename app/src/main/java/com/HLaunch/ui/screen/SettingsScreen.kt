@@ -142,15 +142,6 @@ fun SettingsScreen(
                 
                 item {
                     SettingsItem(
-                        icon = Icons.Default.BugReport,
-                        title = "查看日志",
-                        subtitle = "查看多任务调试日志",
-                        onClick = { navController.navigate(Screen.DevLog.route) }
-                    )
-                }
-                
-                item {
-                    SettingsItem(
                         icon = Icons.Default.Close,
                         title = "关闭开发者模式",
                         subtitle = "关闭后隐藏开发者选项",

@@ -3,10 +3,12 @@ package com.HLaunch.webview
 import android.annotation.SuppressLint
 import android.content.Context
 import android.view.ViewGroup
+import android.webkit.ConsoleMessage
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import com.HLaunch.util.DevLogger
 
 /**
  * WebView池管理器，在内存中保持多个WebView实例，支持快速切换
@@ -93,6 +95,19 @@ object WebViewPool {
                         webViewMap[fileId]?.pageTitle = it
                         onTitleChanged(it) 
                     }
+                }
+                
+                override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
+                    consoleMessage?.let {
+                        val fileName = webViewMap[fileId]?.fileName ?: "unknown"
+                        val msg = "[${fileName}] ${it.message()} (行${it.lineNumber()})"
+                        when (it.messageLevel()) {
+                            ConsoleMessage.MessageLevel.ERROR -> DevLogger.e("WebViewJS", msg)
+                            ConsoleMessage.MessageLevel.WARNING -> DevLogger.w("WebViewJS", msg)
+                            else -> DevLogger.d("WebViewJS", msg)
+                        }
+                    }
+                    return true
                 }
             }
             

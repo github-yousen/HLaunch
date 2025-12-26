@@ -11,12 +11,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.HLaunch.data.entity.FileSource
 import com.HLaunch.data.entity.HtmlFile
 import com.HLaunch.ui.navigation.Screen
+import com.HLaunch.util.DevLogger
 import com.HLaunch.viewmodel.HtmlFileViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -28,15 +30,23 @@ fun HomeScreen(
     navController: NavController,
     fileViewModel: HtmlFileViewModel
 ) {
+    val context = LocalContext.current
     val allFiles by fileViewModel.allFiles.collectAsState()
     val favoriteFiles by fileViewModel.favoriteFiles.collectAsState()
     val runningTasks by fileViewModel.runningTasks.collectAsState()
+    val isDevMode = remember { DevLogger.isDevModeEnabled(context) }
     
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("HLaunch") },
                 actions = {
+                    // 开发者日志按钮（仅开发者模式显示）
+                    if (isDevMode) {
+                        IconButton(onClick = { navController.navigate(Screen.DevLog.route) }) {
+                            Icon(Icons.Default.BugReport, "开发者日志")
+                        }
+                    }
                     // 运行中任务数量徽章
                     if (runningTasks.isNotEmpty()) {
                         BadgedBox(
