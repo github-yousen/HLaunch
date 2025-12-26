@@ -92,43 +92,6 @@ fun SettingsScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // 功能设置
-            item {
-                Text(
-                    text = "功能",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-            }
-            
-            item {
-                SettingsItem(
-                    icon = Icons.Default.Folder,
-                    title = "文件管理",
-                    subtitle = "管理所有HTML文件",
-                    onClick = { navController.navigate(Screen.FileList.route) }
-                )
-            }
-            
-            item {
-                SettingsItem(
-                    icon = Icons.Default.Cloud,
-                    title = "Git仓库",
-                    subtitle = "管理Git仓库同步",
-                    onClick = { navController.navigate(Screen.GitRepos.route) }
-                )
-            }
-            
-            item {
-                SettingsItem(
-                    icon = Icons.Default.SystemUpdate,
-                    title = "应用更新",
-                    subtitle = "检查并下载新版本",
-                    onClick = { navController.navigate(Screen.AppUpdate.route) }
-                )
-            }
-            
             // 开发者选项（开启后显示）
             if (devModeEnabled) {
                 item {

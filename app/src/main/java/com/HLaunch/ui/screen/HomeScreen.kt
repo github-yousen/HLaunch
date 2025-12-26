@@ -3,7 +3,6 @@ package com.HLaunch.ui.screen
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -42,6 +41,8 @@ fun HomeScreen(
     // 文件筛选：0-全部 1-本地 2-导入 3-Git
     var fileFilter by remember { mutableIntStateOf(0) }
     val filterLabels = listOf("全部文件", "本地", "导入", "Git")
+    // 文件列表展开/收起
+    var filesExpanded by remember { mutableStateOf(true) }
     
     Scaffold(
         topBar = {
@@ -90,31 +91,6 @@ fun HomeScreen(
                 QuickActions(navController)
             }
             
-            // 运行中的任务
-            if (runningTasks.isNotEmpty()) {
-                item {
-                    SectionHeader("运行中", Icons.Default.PlayCircle) {
-                        navController.navigate(Screen.RunningTasks.route)
-                    }
-                }
-                item {
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(runningTasks) { task ->
-                            RunningTaskCard(
-                                taskName = task.htmlFileName,
-                                isActive = task.isActive,
-                                onClick = {
-                                    fileViewModel.activateTask(task.htmlFileId)
-                                    navController.navigate(Screen.RunFile.createRoute(task.htmlFileId))
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-            
             // 收藏
             if (favoriteFiles.isNotEmpty()) {
                 item {
@@ -146,29 +122,33 @@ fun HomeScreen(
                     SectionHeader(
                         title = filterLabels[fileFilter],
                         icon = Icons.Default.Folder,
+                        expanded = filesExpanded,
+                        onExpandChange = { filesExpanded = it },
                         currentFilter = fileFilter,
                         onFilterChange = { fileFilter = it }
                     )
                 }
-                if (nonFavoriteFiles.isEmpty()) {
-                    item {
-                        Text(
-                            text = "暂无${filterLabels[fileFilter]}文件",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                } else {
-                    items(nonFavoriteFiles) { file ->
-                        FileListItem(
-                            file = file,
-                            onClick = { navController.navigate(Screen.EditFile.createRoute(file.id)) },
-                            onRun = {
-                                navController.navigate(Screen.RunFile.createRoute(file.id))
-                            },
-                            onEdit = { navController.navigate(Screen.EditFile.createRoute(file.id)) },
-                            onFavorite = { fileViewModel.toggleFavorite(file) }
-                        )
+                if (filesExpanded) {
+                    if (nonFavoriteFiles.isEmpty()) {
+                        item {
+                            Text(
+                                text = "暂无${filterLabels[fileFilter]}文件",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        items(nonFavoriteFiles) { file ->
+                            FileListItem(
+                                file = file,
+                                onClick = { navController.navigate(Screen.EditFile.createRoute(file.id)) },
+                                onRun = {
+                                    navController.navigate(Screen.RunFile.createRoute(file.id))
+                                },
+                                onEdit = { navController.navigate(Screen.EditFile.createRoute(file.id)) },
+                                onFavorite = { fileViewModel.toggleFavorite(file) }
+                            )
+                        }
                     }
                 }
             }
@@ -251,10 +231,12 @@ private fun QuickActionCard(
 private fun SectionHeader(
     title: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
+    expanded: Boolean? = null,
+    onExpandChange: ((Boolean) -> Unit)? = null,
     currentFilter: Int? = null,
     onFilterChange: ((Int) -> Unit)? = null
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var filterExpanded by remember { mutableStateOf(false) }
     
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -272,89 +254,54 @@ private fun SectionHeader(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.weight(1f)
         )
+        // 筛选按钮
         if (onFilterChange != null) {
             Box {
-                IconButton(onClick = { expanded = true }) {
+                IconButton(onClick = { filterExpanded = true }) {
                     Icon(
-                        imageVector = Icons.Default.ArrowDropDown,
+                        imageVector = Icons.Default.FilterList,
                         contentDescription = "筛选",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = if (currentFilter != 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 DropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
+                    expanded = filterExpanded,
+                    onDismissRequest = { filterExpanded = false }
                 ) {
                     DropdownMenuItem(
                         text = { Text("全部文件") },
-                        onClick = { expanded = false; onFilterChange(0) },
+                        onClick = { filterExpanded = false; onFilterChange(0) },
                         leadingIcon = { Icon(Icons.Default.Folder, null) },
                         trailingIcon = { if (currentFilter == 0) Icon(Icons.Default.Check, null) }
                     )
                     DropdownMenuItem(
                         text = { Text("本地") },
-                        onClick = { expanded = false; onFilterChange(1) },
+                        onClick = { filterExpanded = false; onFilterChange(1) },
                         leadingIcon = { Icon(Icons.Default.Description, null) },
                         trailingIcon = { if (currentFilter == 1) Icon(Icons.Default.Check, null) }
                     )
                     DropdownMenuItem(
                         text = { Text("导入") },
-                        onClick = { expanded = false; onFilterChange(2) },
+                        onClick = { filterExpanded = false; onFilterChange(2) },
                         leadingIcon = { Icon(Icons.Default.FileOpen, null) },
                         trailingIcon = { if (currentFilter == 2) Icon(Icons.Default.Check, null) }
                     )
                     DropdownMenuItem(
                         text = { Text("Git") },
-                        onClick = { expanded = false; onFilterChange(3) },
+                        onClick = { filterExpanded = false; onFilterChange(3) },
                         leadingIcon = { Icon(Icons.Default.Cloud, null) },
                         trailingIcon = { if (currentFilter == 3) Icon(Icons.Default.Check, null) }
                     )
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun RunningTaskCard(
-    taskName: String,
-    isActive: Boolean,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .width(140.dp)
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isActive) 
-                MaterialTheme.colorScheme.primaryContainer 
-            else 
-                MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.PlayCircle,
-                contentDescription = null,
-                tint = if (isActive) 
-                    MaterialTheme.colorScheme.primary 
-                else 
-                    MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = taskName,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            if (isActive) {
-                Text(
-                    text = "当前运行",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
+        // 展开/收起按钮
+        if (onExpandChange != null && expanded != null) {
+            IconButton(onClick = { onExpandChange(!expanded) }) {
+                Icon(
+                    imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = if (expanded) "收起" else "展开",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

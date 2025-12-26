@@ -94,7 +94,6 @@ fun AddRepoScreen(
                 value = repoUrl,
                 onValueChange = { repoUrl = it },
                 label = { Text("仓库地址") },
-                placeholder = { Text("https://github.com/user/repo.git") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 leadingIcon = { Icon(Icons.Default.Link, null) },
