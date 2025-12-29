@@ -1,10 +1,12 @@
 package com.HLaunch.util
 
 import android.content.Context
+import kotlinx.coroutines.*
 import java.io.File
 import java.io.RandomAccessFile
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
  * Developer Logger with cross-process support (file-based storage)
@@ -20,6 +22,17 @@ object DevLogger {
     
     @Volatile
     private var appContext: Context? = null
+    
+    // 内存缓存，避免频繁读文件
+    private val memoryCache = ConcurrentLinkedQueue<LogEntry>()
+    @Volatile
+    private var cacheLoaded = false
+    
+    // 写入队列，批量写入
+    private val writeQueue = ConcurrentLinkedQueue<LogEntry>()
+    private val writeScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    @Volatile
+    private var writeJobRunning = false
     
     data class LogEntry(
         val time: String,
@@ -41,6 +54,22 @@ object DevLogger {
     
     fun init(context: Context) {
         appContext = context.applicationContext
+        // 异步加载缓存
+        writeScope.launch {
+            loadCacheFromFile(context.applicationContext)
+        }
+    }
+    
+    private fun loadCacheFromFile(context: Context) {
+        try {
+            val logFile = getLogFile(context)
+            if (logFile.exists()) {
+                logFile.readLines().mapNotNull { LogEntry.fromLine(it) }.forEach { memoryCache.offer(it) }
+            }
+            cacheLoaded = true
+        } catch (e: Exception) {
+            cacheLoaded = true
+        }
     }
     
     fun isDevModeEnabled(context: Context): Boolean {
@@ -89,6 +118,7 @@ object DevLogger {
             processName = getProcessName()
         )
         
+        // 输出到Logcat
         val logMsg = "[${entry.processName}] $message"
         when (level) {
             "D" -> android.util.Log.d(tag, logMsg)
@@ -97,16 +127,46 @@ object DevLogger {
             "E" -> android.util.Log.e(tag, logMsg)
         }
         
+        // 添加到内存缓存
+        memoryCache.offer(entry)
+        while (memoryCache.size > MAX_LOGS) {
+            memoryCache.poll()
+        }
+        
+        // 添加到写入队列，异步批量写入
+        writeQueue.offer(entry)
+        scheduleWrite(ctx)
+    }
+    
+    private fun scheduleWrite(context: Context) {
+        if (writeJobRunning) return
+        writeJobRunning = true
+        
+        writeScope.launch {
+            delay(500) // 批量写入间隔
+            flushWriteQueue(context)
+            writeJobRunning = false
+        }
+    }
+    
+    private fun flushWriteQueue(context: Context) {
+        val entries = mutableListOf<LogEntry>()
+        while (true) {
+            val entry = writeQueue.poll() ?: break
+            entries.add(entry)
+        }
+        if (entries.isEmpty()) return
+        
         try {
-            val logFile = getLogFile(ctx)
+            val logFile = getLogFile(context)
             RandomAccessFile(logFile, "rw").use { raf ->
                 raf.channel.lock().use { _ ->
                     raf.seek(raf.length())
-                    val logLine = entry.toLine() + "\n"
-                    raf.write(logLine.toByteArray(Charsets.UTF_8))
+                    val content = entries.joinToString("\n") { it.toLine() } + "\n"
+                    raf.write(content.toByteArray(Charsets.UTF_8))
                 }
             }
-            trimLogsIfNeeded(ctx)
+            trimLogsIfNeeded(context)
         } catch (e: Exception) {
             android.util.Log.e("DevLogger", "log_write_failed: ${e.message}")
         }
@@ -118,7 +178,7 @@ object DevLogger {
             if (!logFile.exists()) return
             
             val lines = logFile.readLines(Charsets.UTF_8)
-            if (lines.size > MAX_LOGS) {
+            if (lines.size > MAX_LOGS * 2) { // 只有超过2倍才裁剪，减少IO
                 val trimmed = lines.takeLast(MAX_LOGS)
                 logFile.writeText(trimmed.joinToString("\n") + "\n", Charsets.UTF_8)
             }
@@ -133,6 +193,11 @@ object DevLogger {
     fun e(tag: String, message: String) = log("E", tag, message)
     
     fun getLogs(context: Context): List<LogEntry> {
+        // 优先返回内存缓存
+        if (cacheLoaded || memoryCache.isNotEmpty()) {
+            return memoryCache.toList()
+        }
+        // 缓存未加载时从文件读取
         return try {
             val logFile = getLogFile(context)
             if (!logFile.exists()) return emptyList()
@@ -143,13 +208,16 @@ object DevLogger {
     }
     
     fun clearLogs(context: Context) {
-        try {
-            val logFile = getLogFile(context)
-            logFile.writeText("")
-            i("DevMode", "logs_cleared")
-        } catch (e: Exception) {
-            android.util.Log.e("DevLogger", "clear_logs_failed: ${e.message}")
+        memoryCache.clear()
+        writeScope.launch {
+            try {
+                val logFile = getLogFile(context)
+                logFile.writeText("")
+            } catch (e: Exception) {
+                android.util.Log.e("DevLogger", "clear_logs_failed: ${e.message}")
+            }
         }
+        i("DevMode", "logs_cleared")
     }
     
     fun getLogsAsText(context: Context): String {

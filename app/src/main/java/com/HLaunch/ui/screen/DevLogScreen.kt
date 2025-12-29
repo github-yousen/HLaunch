@@ -33,14 +33,17 @@ fun DevLogScreen(navController: NavController) {
     var logs by remember { mutableStateOf(DevLogger.getLogs(context)) }
     val listState = rememberLazyListState()
     
-    // 自动刷新日志，每秒刷新一次并滚动到底部
+    // 自动刷新日志，每2秒刷新一次
     LaunchedEffect(Unit) {
         while (true) {
-            logs = DevLogger.getLogs(context)
-            if (logs.isNotEmpty()) {
-                listState.animateScrollToItem(logs.size - 1)
+            delay(2000)
+            val newLogs = DevLogger.getLogs(context)
+            if (newLogs.size != logs.size) {
+                logs = newLogs
+                if (logs.isNotEmpty()) {
+                    listState.animateScrollToItem(logs.size - 1)
+                }
             }
-            delay(1000)
         }
     }
     
